@@ -34,7 +34,9 @@
 // elseif on check_turn_in
 //  - airplane\Inte_Akera
 
+using System;
 using System.Text;
+using System.Text.RegularExpressions;
 
 namespace EQWOWPregenScripts
 {
@@ -148,6 +150,33 @@ namespace EQWOWPregenScripts
             }
         }
 
+        private List<string> GetParameterValuesAfterParameterToken(string line, string parameterToken)
+        {
+            // Match content within { } preceded by the paremeter token = 
+            string matchString = parameterToken + @"\s*=\s*\{([^}]+)\}";
+            var match = Regex.Match(line, matchString);
+            if (match.Success == false)
+                return new List<string>();
+
+            // Get the content inside the braces
+            string valuesStr = match.Groups[1].Value;
+            string[] values = valuesStr.Split(",");
+            List<string> returnArray = new List<string>();
+            foreach (string value in values)
+                returnArray.Add(value.Trim());
+            return returnArray;
+        }
+
+        private string GetParameterValueAfterParameterToken(string line, string parameterToken)
+        {
+            // Match the key followed by = and a number
+            var match = Regex.Match(line, $@"{parameterToken}\s*=\s*(\d+)");
+            if (match.Success == false)
+                return string.Empty;
+
+            return match.Groups[1].Value;
+        }
+
         private List<int> GetRequiredItemIDsFromLine(string line)
         {
             List<int> requiredItemIDs = new List<int>();
@@ -198,11 +227,7 @@ namespace EQWOWPregenScripts
                 return null;
             if (workingLine.Contains("GetFaction"))
                 return null;
-            if (workingLine.Contains("copper"))
-                return null;
-            if (workingLine.Contains("gold"))
-                return null;
-            if (workingLine.Contains("platinum"))
+            if (workingLine.Contains("silver"))
                 return null;
             //if (line.Contains("items ="))
             //    return null;
@@ -210,34 +235,88 @@ namespace EQWOWPregenScripts
             //    return null;
             //if (line.Contains("itemid ="))
             //    return null;
-            if (workingLine.Contains("{"))
-                return null;
 
-            // Process the line based on length of blocks
-            string rewardDataOnly = workingLine.Replace("e.other:QuestReward(e.self,", "").Trim().Split(")")[0];
-            string[] blocks = rewardDataOnly.Split(",");
-            if (blocks.Length < 4)
+            // There are two reward line patterns:
+            // - One that is a normal parameter list separated by comma
+            // - One that uses bracket notation { }
+            if (workingLine.Contains("{"))
             {
-                exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Reward line split into " + blocks.Length + " blocks, which is unhandled", 0, line));
-                return null;
-            }
-            int copper = int.Parse(blocks[0]);
-            int silver = int.Parse(blocks[1]);
-            int gold = int.Parse(blocks[2]);
-            int platinum = int.Parse(blocks[3]);
-            returnReward.Money = copper + (silver * 100) + (gold * 10000) + (platinum * 1000000);
-            if (blocks.Length > 4)
-            {
-                int itemID = int.Parse(blocks[4]);
-                if (itemID != 0)
+                // Look for all possible keywords
+                // Single item
+                if (workingLine.Contains("itemid") == true)
+                {
+                    string paramaterValue = GetParameterValueAfterParameterToken(workingLine, "itemid");
+                    int itemID = int.Parse(paramaterValue);
                     returnReward.AddItemReward(itemID);
+                }
+
+                // Group of items
+                if (workingLine.Contains("items"))
+                {
+                    List<string> paramaterValues = GetParameterValuesAfterParameterToken(workingLine, "items");
+                    foreach(string paramaterValue in paramaterValues)
+                    {
+                        int itemID = int.Parse(paramaterValue);
+                        returnReward.AddItemReward(itemID);
+                    }
+                }
+
+                // Experience
+                if (workingLine.Contains("exp"))
+                {
+                    string paramaterValue = GetParameterValueAfterParameterToken(workingLine, "exp");
+                    returnReward.Experience = int.Parse(paramaterValue);
+                }
+
+                // Money
+                int copper = 0;
+                if (workingLine.Contains("copper"))
+                {
+                    string paramaterValue = GetParameterValueAfterParameterToken(workingLine, "copper");
+                    copper = int.Parse(paramaterValue);
+                }
+                int gold = 0;
+                if (workingLine.Contains("gold"))
+                {
+                    string paramaterValue = GetParameterValueAfterParameterToken(workingLine, "gold");
+                    gold = int.Parse(paramaterValue);
+                }
+                int platinum = 0;
+                if (workingLine.Contains("platinum"))
+                {
+                    string paramaterValue = GetParameterValueAfterParameterToken(workingLine, "platinum");
+                    platinum = int.Parse(paramaterValue);
+                }
+                returnReward.Money = copper + (gold * 10000) + (platinum * 1000000);
             }
-            if (blocks.Length > 5)
-                returnReward.Experience = int.Parse(blocks[5]);
-            if (blocks.Length > 6)
+            else
             {
-                exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Reward line split into " + blocks.Length + " blocks, which is unhandled", 0, line));
-                return null;
+                // Process the line based on length of blocks
+                string rewardDataOnly = workingLine.Replace("e.other:QuestReward(e.self,", "").Trim().Split(")")[0];
+                string[] blocks = rewardDataOnly.Split(",");
+                if (blocks.Length < 4)
+                {
+                    exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Reward line split into " + blocks.Length + " blocks, which is unhandled", 0, line));
+                    return null;
+                }
+                int copper = int.Parse(blocks[0]);
+                int silver = int.Parse(blocks[1]);
+                int gold = int.Parse(blocks[2]);
+                int platinum = int.Parse(blocks[3]);
+                returnReward.Money = copper + (silver * 100) + (gold * 10000) + (platinum * 1000000);
+                if (blocks.Length > 4)
+                {
+                    int itemID = int.Parse(blocks[4]);
+                    if (itemID != 0)
+                        returnReward.AddItemReward(itemID);
+                }
+                if (blocks.Length > 5)
+                    returnReward.Experience = int.Parse(blocks[5]);
+                if (blocks.Length > 6)
+                {
+                    exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Reward line split into " + blocks.Length + " blocks, which is unhandled", 0, line));
+                    return null;
+                }
             }
 
             return returnReward;
@@ -321,7 +400,7 @@ namespace EQWOWPregenScripts
                         // Faction level
                         if (workingLine.Contains("GetFaction("))
                         {
-                            int minFactionLevel = int.Parse(blocks[2]);
+                            int minFactionLevel = int.Parse(blocks[2].Replace(")", ""));
                             if (blocks[1] == "<")
                                 minFactionLevel--;
                             quest.MinimumFaction = GetFactionValueFromFactionLevel(minFactionLevel);
@@ -330,7 +409,7 @@ namespace EQWOWPregenScripts
                         // Faction value
                         else
                         {
-                            int minFactionValue = int.Parse(blocks[2]);
+                            int minFactionValue = int.Parse(blocks[2].Replace(")", ""));
                         }
                     }
                 }
@@ -439,7 +518,10 @@ namespace EQWOWPregenScripts
                     {
                         Quest? quest = ParseQuest(eventTradeLines, zoneShortName, questgiverName, ref outputExceptionLines);
                         if (quest != null)
+                        {
+                            quest.Name = questgiverName.Replace('_', ' ').Replace("#", "") + " Quest 1";
                             quests.Add(quest);
+                        }
                     }                    
                 }
             }
@@ -487,7 +569,7 @@ namespace EQWOWPregenScripts
                 outputLineSB.Append("|");
                 outputLineSB.Append(quest.QuestgiverName);
                 outputLineSB.Append("|");
-                outputLineSB.Append(quest.QuestgiverName.Replace('_', ' ').Replace("#", "") + " Quest " + qi.ToString());
+                outputLineSB.Append(quest.Name);
                 outputLineSB.Append("|");
                 outputLineSB.Append(quest.MinimumFaction);
                 outputLineSB.Append("|");
