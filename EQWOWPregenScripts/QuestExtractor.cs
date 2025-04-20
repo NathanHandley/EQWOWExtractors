@@ -21,6 +21,14 @@
 // Spawn Events
 //  - airplane\#Master_of_elements
 //  - function event_spawn(e)
+//  - eq.depop()
+// Subconditionals for rewards
+//  - akanon\Manik_Compolten
+//  - if(math.random(100) < 20) then
+// Random and Choose Random
+//  - akanon\Manik_Compolten
+//  - math.random(0,10)
+//  - eq.ChooseRandom
 
 using System.Text;
 
@@ -77,16 +85,46 @@ namespace EQWOWPregenScripts
         {
             public int FactionId;
             public int ChangeAmount;
+            public FactionChange() { }
+            public FactionChange(int factionId, int changeAmount)   
+            {
+                FactionId = factionId;
+                ChangeAmount = changeAmount;
+            }
+        }
+
+        public class ItemReward
+        {
+            public int ID = 0;
+            public int Count = 1;
+            public float Chance = 100f;
+            public ItemReward(int id, int count, float chance)
+            {
+                ID = id;
+                Count = count;
+                Chance = chance;
+            }
         }
 
         public class QuestReward
         {
             public int Money; // Is this in silver?  Looks like it
             public Dictionary<int, int> ItemCountByIDs = new Dictionary<int, int>();
-            public List<int> Items = new List<int>();
+            public List<ItemReward> ItemRewards { get; } = new List<ItemReward>();
             public int Experience; 
             public List<FactionChange> FactionChanges = new List<FactionChange>();
             public bool AttackPlayerOnTurnin = false; // True if NPC attacks player after turn-in
+
+            public void AddItemReward(int itemID, int count = 1, float chance = 100f)
+            {
+                foreach (ItemReward itemReward in ItemRewards)
+                    if (itemReward.ID == itemID)
+                    {
+                        itemReward.Count += count;
+                        return;
+                    }
+                ItemRewards.Add(new ItemReward(itemID, count, chance));
+            }
         }
 
         public class Quest
@@ -128,10 +166,75 @@ namespace EQWOWPregenScripts
             return requiredItemIDs;
         }
 
-
-        private Quest? ParseQuest(List<string> lines, string zoneShortName, string questGiverName, ref List<ExceptionLine> exceptionLines)
+        private QuestReward? GetQuestRewardFromLine(string line, string zoneShortName, string questgiverName, ref List<ExceptionLine> exceptionLines)
         {
-            var quest = new Quest(zoneShortName, questGiverName);
+            QuestReward? returnReward = new QuestReward();
+            // Hard-coded
+            if (zoneShortName == "innothule" && questgiverName == "Lynuga")
+            {
+                returnReward.FactionChanges.Add(new FactionChange(222,5));
+                returnReward.FactionChanges.Add(new FactionChange(308, -5));
+                returnReward.FactionChanges.Add(new FactionChange(235, -5));
+                returnReward.Experience = 100;
+                returnReward.AddItemReward(10082, 1, 5);
+                returnReward.AddItemReward(10080, 1, 47.5f);
+                returnReward.AddItemReward(10081, 1, 47.5f);
+                return returnReward;
+            }
+
+            // Strip comments
+            string workingLine = line.Split("--")[0];
+
+            // TODO: Handle these conditions
+            if (workingLine.Contains(" or" ))
+                return null;
+            if (workingLine.Contains("random"))
+                return null;
+            if (workingLine.Contains("ChooseRandom"))
+                return null;
+            //if (line.Contains("items ="))
+            //    return null;
+            //if (line.Contains("exp ="))
+            //    return null;
+            //if (line.Contains("itemid ="))
+            //    return null;
+            if (workingLine.Contains("{"))
+                return null;
+
+            // Process the line based on length of blocks
+            string rewardDataOnly = workingLine.Replace("e.other:QuestReward(e.self,", "").Trim().Split(")")[0];
+            string[] blocks = rewardDataOnly.Split(",");
+            if (blocks.Length < 4)
+            {
+                exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Reward line split into " + blocks.Length + " blocks, which is unhandled", 0, line));
+                return null;
+            }
+            int copper = int.Parse(blocks[0]);
+            int silver = int.Parse(blocks[1]);
+            int gold = int.Parse(blocks[2]);
+            int platinum = int.Parse(blocks[3]);
+            returnReward.Money = copper + (silver * 100) + (gold * 10000) + (platinum * 1000000);
+            if (blocks.Length > 4)
+            {
+                int itemID = int.Parse(blocks[4]);
+                if (itemID != 0)
+                    returnReward.AddItemReward(itemID);
+            }
+            if (blocks.Length > 5)
+                returnReward.Experience = int.Parse(blocks[5]);
+            if (blocks.Length > 6)
+            {
+                exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Reward line split into " + blocks.Length + " blocks, which is unhandled", 0, line));
+                return null;
+            }
+
+            return returnReward;
+        }
+
+
+        private Quest? ParseQuest(List<string> lines, string zoneShortName, string questgiverName, ref List<ExceptionLine> exceptionLines)
+        {
+            var quest = new Quest(zoneShortName, questgiverName);
 
             // Grab the relevant lines
             int rewardsLineIndex = -1;
@@ -146,11 +249,25 @@ namespace EQWOWPregenScripts
                         rewardsLineIndex = i;
                     else
                     {
-                        exceptionLines.Add(new ExceptionLine(questGiverName, zoneShortName, "Additional QuestReward line found", i, line));
+                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Additional QuestReward line found", i, line));
                         continue;
                     }
                 }
             }
+
+            // Calculate the reward
+            if (rewardsLineIndex == -1)
+            {
+                exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "No rewards line found for trade block", 0, string.Empty));
+                return null;
+            }
+            QuestReward? questReward = GetQuestRewardFromLine(lines[rewardsLineIndex], zoneShortName, questgiverName, ref exceptionLines);
+            if (questReward == null)
+            {
+                exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Rewards line found, but could not parse", rewardsLineIndex, lines[rewardsLineIndex]));
+                return null;
+            }
+            quest.Reward = questReward;
 
             // Operate on all lines or until the end of the quest area
             for (int i = 0; i < lines.Count; i++)
@@ -163,14 +280,20 @@ namespace EQWOWPregenScripts
                     // Multi-part conditionals should be skipped and done manually
                     if (line.Contains(" or "))
                     {
-                        exceptionLines.Add(new ExceptionLine(questGiverName, zoneShortName, "Has 'or' conditional", i, line));
+                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "check_turn_in has 'or' conditional", i, line));
+                        continue;
+                    }
+
+                    if (line.Contains("{"))
+                    {
+                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "check_turn_in has '{'", i, line));
                         continue;
                     }
 
                     // For now, just catch any instances where there is a second
                     if (quest.RequiredItems.Count > 0)
                     {
-                        exceptionLines.Add(new ExceptionLine(questGiverName, zoneShortName, "Already have required items", i,line));
+                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Already have required items", i,line));
                         continue;
                     }
                     else
@@ -286,7 +409,22 @@ namespace EQWOWPregenScripts
     
         private void OutputQuests(List<Quest> quests)
         {
-            string outputHeaderLine = "zone_shortname|questgiver_name|quest_name|req_repmin|req_item1|req_item2|req_item3|req_item4|req_item5|req_item6|reward_money|reward_exp|reward_item1|reward_item2|reward_item3|reward_item4|reward_item5|reward_item6|reward_faction1ID|reward_faction1Amt|reward_faction2ID|reward_faction2Amt|reward_faction3ID|reward_faction3Amt|reward_faction4ID|reward_faction4Amt|reward_faction5ID|reward_faction5Amt|reward_faction6ID|reward_faction6Amt|reward_dialog|attack_player_after_turnin";
+            StringBuilder outputHeaderSB = new StringBuilder();
+            outputHeaderSB.Append("zone_shortname|questgiver_name|quest_name|req_repmin|req_item1|req_item2|req_item3|req_item4|req_item5|req_item6|reward_money|reward_exp|");
+            for (int i = 1; i <= 20; i++)
+            {
+                outputHeaderSB.Append("reward_item_ID");
+                outputHeaderSB.Append(i);
+                outputHeaderSB.Append("|");
+                outputHeaderSB.Append("reward_item_count");
+                outputHeaderSB.Append(i);
+                outputHeaderSB.Append("|");
+                outputHeaderSB.Append("reward_item_chance");
+                outputHeaderSB.Append(i);
+                outputHeaderSB.Append("|");
+            }
+            outputHeaderSB.Append("reward_faction1ID|reward_faction1Amt|reward_faction2ID|reward_faction2Amt|reward_faction3ID|reward_faction3Amt|reward_faction4ID|reward_faction4Amt|reward_faction5ID|reward_faction5Amt|reward_faction6ID|reward_faction6Amt|reward_dialog|attack_player_after_turnin");
+            string outputHeaderLine = outputHeaderSB.ToString();
             List<string> outputQuestLines = new List<string>();
             outputQuestLines.Add(outputHeaderLine);
 
@@ -316,13 +454,26 @@ namespace EQWOWPregenScripts
                 outputLineSB.Append("|");
                 outputLineSB.Append(quest.Reward.Experience);
                 outputLineSB.Append("|");
-                for (int i = 0; i < 4; i++)
+                for (int i = 0; i < 20; i++)
                 {
-                    if (quest.Reward.Items.Count > i)
-                        outputLineSB.Append(quest.Reward.Items[i]);
+                    if (quest.Reward.ItemRewards.Count > i)
+                    {
+                        outputLineSB.Append(quest.Reward.ItemRewards[i].ID);
+                        outputLineSB.Append("|");
+                        outputLineSB.Append(quest.Reward.ItemRewards[i].Count);
+                        outputLineSB.Append("|");
+                        outputLineSB.Append(quest.Reward.ItemRewards[i].Chance);
+                        outputLineSB.Append("|");
+                    }
                     else
+                    {
                         outputLineSB.Append("-1");
-                    outputLineSB.Append("|");
+                        outputLineSB.Append("|");
+                        outputLineSB.Append("-1");
+                        outputLineSB.Append("|");
+                        outputLineSB.Append("-1");
+                        outputLineSB.Append("|");
+                    }
                 }
                 for (int i = 0; i < 6; i++)
                 {
