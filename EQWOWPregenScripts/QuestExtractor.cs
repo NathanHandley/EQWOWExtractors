@@ -1,7 +1,28 @@
-﻿using System.Runtime.CompilerServices;
+﻿//  Author: Nathan Handley (nathanhandley@protonmail.com)
+//  Copyright (c) 2025 Nathan Handley
+//
+//  This program is free software: you can redistribute it and/or modify
+//  it under the terms of the GNU General Public License as published by
+//  the Free Software Foundation, either version 3 of the License, or
+//  (at your option) any later version.
+//
+//  This program is distributed in the hope that it will be useful,
+//  but WITHOUT ANY WARRANTY; without even the implied warranty of
+//  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+//  GNU General Public License for more details.
+//
+//  You should have received a copy of the GNU General Public License
+//  along with this program.  If not, see <http://www.gnu.org/licenses/>.
+
+// TODO
+// Timer Events
+//  - airplane\#Master_of_Elements
+//  - function event_timer(e)
+// Spawn Events
+//  - airplane\#Master_of_elements
+//  - function event_spawn(e)
+
 using System.Text;
-using System.Text.RegularExpressions;
-using static EQWOWPregenScripts.QuestExtractor;
 
 namespace EQWOWPregenScripts
 {
@@ -13,18 +34,20 @@ namespace EQWOWPregenScripts
 
         public class ExceptionLine
         {
-            public ExceptionLine(string questgiverName, string zoneShortName, string exceptionReason, string text)
+            public ExceptionLine(string questgiverName, string zoneShortName, string exceptionReason, int lineRow, string lineText)
             {
                 QuestgiverName = questgiverName;
                 ZoneShortName = zoneShortName;
                 ExceptionReason = exceptionReason;
-                Text = text;
+                LineRow = lineRow;
+                LineText = lineText;
                 DataToString(true);
             }
             private string ZoneShortName = string.Empty;
             private string QuestgiverName = string.Empty;
             private string ExceptionReason = string.Empty;
-            private string Text = string.Empty;
+            private int LineRow;
+            private string LineText = string.Empty;
             public string DataToString(bool forConsole = false)
             {
                 StringBuilder sb = new StringBuilder();
@@ -37,14 +60,16 @@ namespace EQWOWPregenScripts
                 sb.Append(delimeter);
                 sb.Append(ExceptionReason);
                 sb.Append(delimeter);
-                sb.Append(Text);
+                sb.Append(LineRow);
+                sb.Append(delimeter);
+                sb.Append(LineText);
                 if (forConsole == true)
                     Console.WriteLine(sb.ToString());
                 return sb.ToString();
             }
             static public string HeaderToString()
             {
-                return "Questgiver_Name|Zone_Shortname|Exception_Reason|Text";
+                return "Questgiver_Name|Zone_Shortname|Exception_Reason|LineRow|LineText";
             }
         }
 
@@ -67,10 +92,18 @@ namespace EQWOWPregenScripts
         public class Quest
         {
             public string Name = string.Empty;
+            public string ZoneShortName = string.Empty;
+            public string QuestgiverName = string.Empty;
             public List<int> RequiredItems = new List<int>(); // Item IDs for turn-in
             public QuestReward Reward = new QuestReward();
             public List<string> Dialogue = new List<string>(); // NPC Say statements
             public int MinimumFaction= -1; // Minimum faction value required
+
+            public Quest(string zoneShortName, string questGiverName)
+            {
+                ZoneShortName = zoneShortName;
+                QuestgiverName = questGiverName;
+            }
         }
 
         private List<int> GetRequiredItemIDsFromLine(string line)
@@ -96,12 +129,31 @@ namespace EQWOWPregenScripts
         }
 
 
-        private Quest? ParseQuest(List<string> lines, int startIndex, string zoneShortName, string questGiverName, ref List<ExceptionLine> exceptionLines)
+        private Quest? ParseQuest(List<string> lines, string zoneShortName, string questGiverName, ref List<ExceptionLine> exceptionLines)
         {
-            var quest = new Quest();
+            var quest = new Quest(zoneShortName, questGiverName);
+
+            // Grab the relevant lines
+            int rewardsLineIndex = -1;
+            for (int i = 0; i < lines.Count; i++)
+            {
+                string line = lines[i].Split("--")[0].Trim(); // Dump the comment
+
+                // Rewards
+                if (line.Contains("QuestReward") == true)
+                {
+                    if (rewardsLineIndex == -1)
+                        rewardsLineIndex = i;
+                    else
+                    {
+                        exceptionLines.Add(new ExceptionLine(questGiverName, zoneShortName, "Additional QuestReward line found", i, line));
+                        continue;
+                    }
+                }
+            }
 
             // Operate on all lines or until the end of the quest area
-            for (int i = startIndex; i < lines.Count; i++)
+            for (int i = 0; i < lines.Count; i++)
             {
                 string line = lines[i].Split("--")[0].Trim(); // Dump the comment
 
@@ -111,166 +163,77 @@ namespace EQWOWPregenScripts
                     // Multi-part conditionals should be skipped and done manually
                     if (line.Contains(" or "))
                     {
-                        exceptionLines.Add(new ExceptionLine(questGiverName, zoneShortName, "Has 'or' conditional", line));
+                        exceptionLines.Add(new ExceptionLine(questGiverName, zoneShortName, "Has 'or' conditional", i, line));
                         continue;
                     }
 
                     // For now, just catch any instances where there is a second
                     if (quest.RequiredItems.Count > 0)
                     {
-                        exceptionLines.Add(new ExceptionLine(questGiverName, zoneShortName, "Already have required items", line));
+                        exceptionLines.Add(new ExceptionLine(questGiverName, zoneShortName, "Already have required items", i,line));
                         continue;
                     }
                     else
                         quest.RequiredItems.AddRange(GetRequiredItemIDsFromLine(line));
                 }
-
-                if (line.Contains("end"))
-                {
-                    if (quest.RequiredItems.Count == 0)
-                        return null;
-                    else
-                        return quest;
-                }
-                //if (line.Contains(""))
             }
-            return quest;       
-
-            // Parse faction condition if present (e.g., GetFactionValue(e.self) >= 100 or > 100)
-            //var factionConditionMatch = Regex.Match(line, @"GetFactionValue\(e\.self\)\s*(>=|>)\s*(\d+)");
-            //if (factionConditionMatch.Success)
-            //{
-            //    int factionValue = int.Parse(factionConditionMatch.Groups[2].Value);
-            //    string operatorStr = factionConditionMatch.Groups[1].Value;
-            //    if (operatorStr == ">=" || operatorStr == ">")
-            //    {
-            //        quest.MinimumFaction = factionValue;
-            //    }
-            //}
-
-            // Parse required items from check_turn_in
-            //var itemMatch = Regex.Match(line, @"check_turn_in\([^,]+,[^{]+{([^}]+)}\)");
-            //if (!itemMatch.Success) return null;
-
-            //string requiredItemsStr = itemMatch.Groups[1].Value;
-            //var itemPairs = requiredItemsStr.Split(',').Select(s => s.Trim());
-            //foreach (var pair in itemPairs)
-            //{
-            //    var match = Regex.Match(pair, @"item\d+\s*=\s*(\d+)");
-            //    if (match.Success)
-            //    {
-            //        quest.RequiredItems.Add(int.Parse(match.Groups[1].Value));
-            //    }
-            //}
-
-            // Generate quest name based on items
-            //quest.Name = $"Turn in {string.Join(", ", quest.RequiredItems)}";
-
-            // Find associated Say statement (before or after)
-            //for (int i = Math.Max(0, startIndex - 5); i < Math.Min(lines.Count, startIndex + 5); i++)
-            //{
-            //    string dialogueLine = lines[i].Trim();
-            //    if (dialogueLine.Contains("e.self:Say"))
-            //    {
-            //        var sayMatch = Regex.Match(dialogueLine, @"e\.self:Say\(""([^""]+)""");
-            //        if (sayMatch.Success)
-            //        {
-            //            quest.Dialogue.Add(sayMatch.Groups[1].Value);
-            //        }
-            //    }
-            //}
-
-            // Parse rewards and faction changes
-            //for (int i = startIndex + 1; i < lines.Count; i++)
-            //{
-            //    line = lines[i].Trim();
-
-            //    // Stop if we hit another check_turn_in (new quest block)
-            //    if (line.Contains("check_turn_in") && line.Contains("item1"))
-            //    {
-            //        break;
-            //    }
-
-            //    // Parse faction changes
-            //    if (line.Contains("e.other:Faction"))
-            //    {
-            //        var factionMatch = Regex.Match(line, @"e\.other:Faction\([^,]+,\s*(\d+),\s*([-]?\d+)[^;]*\);\s*--\s*([^)]+)");
-            //        if (factionMatch.Success)
-            //        {
-            //            quest.Reward.FactionChanges.Add(new FactionChange
-            //            {
-            //                FactionId = int.Parse(factionMatch.Groups[1].Value),
-            //                ChangeAmount = int.Parse(factionMatch.Groups[2].Value),
-            //                FactionName = factionMatch.Groups[3].Value.Trim()
-            //            });
-            //        }
-            //    }
-            //    // Check for attack trigger
-            //    else if (line.Contains("eq.attack(e.other:GetName())"))
-            //    {
-            //        quest.Reward.AttackPlayerOnTurnin = true;
-            //    }
-            //    // Parse QuestReward
-            //    else if (line.Contains("e.other:QuestReward"))
-            //    {
-            //        // Match QuestReward with 6 arguments (items, exp) or 5 arguments (item only)
-            //        var rewardMatch = Regex.Match(line, @"e\.other:QuestReward\([^,]+,(\d+),(\d+),(\d+),(\d+),([^,]+)(?:,(\d+))?\)");
-            //        if (rewardMatch.Success)
-            //        {
-            //            quest.Reward.Money = int.Parse(rewardMatch.Groups[2].Value); // Silver (second argument)
-
-            //            string rewardItemsStr = rewardMatch.Groups[5].Value.Trim();
-            //            // Check if the last group (exp) exists
-            //            if (rewardMatch.Groups.Count > 6 && !string.IsNullOrEmpty(rewardMatch.Groups[6].Value))
-            //            {
-            //                quest.Reward.Experience = int.Parse(rewardMatch.Groups[6].Value);
-            //                // Parse items (can be a single ID or a list like {id1, id2})
-            //                if (rewardItemsStr.StartsWith("{") && rewardItemsStr.EndsWith("}"))
-            //                {
-            //                    rewardItemsStr = rewardItemsStr.Trim('{', '}');
-            //                    quest.Reward.Items.AddRange(rewardItemsStr.Split(',').Select(s => int.Parse(s.Trim())));
-            //                }
-            //                else if (int.TryParse(rewardItemsStr, out int itemId))
-            //                {
-            //                    quest.Reward.Items.Add(itemId);
-            //                }
-            //            }
-            //            else
-            //            {
-            //                // No exp, last argument is the item
-            //                if (int.TryParse(rewardItemsStr, out int itemId))
-            //                {
-            //                    quest.Reward.Items.Add(itemId);
-            //                }
-            //                quest.Reward.Experience = 0; // Default to 0 if no exp specified
-            //            }
-            //        }
-            //        // Handle table-based QuestReward (e.g., {silver = ..., items = {...}, exp = ...})
-            //        else
-            //        {
-            //            var tableRewardMatch = Regex.Match(line, @"e\.other:QuestReward\([^,]+,\s*{\s*silver\s*=\s*(?:math\.random\()?(\d+)(?:\))?\s*,items\s*=\s*{([^}]+)},exp\s*=\s*(\d+)\s*}\)");
-            //            if (tableRewardMatch.Success)
-            //            {
-            //                quest.Reward.Money = int.Parse(tableRewardMatch.Groups[1].Value); // Silver
-            //                quest.Reward.Experience = int.Parse(tableRewardMatch.Groups[3].Value); // Exp
-
-            //                // Parse items from the items table
-            //                string rewardItemsStr = tableRewardMatch.Groups[2].Value.Trim();
-            //                quest.Reward.Items.AddRange(rewardItemsStr.Split(',').Select(s => int.Parse(s.Trim())));
-            //            }
-            //        }
-            //        break; // Stop after QuestReward to avoid collecting unrelated faction changes
-            //    }
-            //}
-
             return quest;
         }
 
+        static protected List<string> GetEventTradeBlock(string questGiverName, string zoneShortName, string fileFullPath, ref List<ExceptionLine> exceptionLines)
+        {
+            List<string> eventTradeLines = new List<string>();
+
+            // Grab lines to return by looking for the function container
+            bool startLineFound = false;
+            int blockStartCount = 0;
+            using (var sr = new StreamReader(fileFullPath))
+            {
+                string? curLine;
+                while ((curLine = sr.ReadLine()) != null)
+                {
+                    // Start the primary container
+                    if (curLine.TrimStart().StartsWith("function event_trade(e)") == true)
+                    {
+                        startLineFound = true;
+                        blockStartCount++;
+                        continue;
+                    }
+
+                    // No primary container found yet, so jump to next line without processing anything
+                    if (startLineFound == false)
+                        continue;
+
+                    // All scope subcontainers should start with an if
+                    if (curLine.TrimStart().StartsWith("if") == true)
+                        blockStartCount++;
+
+                    // All scopes should end with end
+                    if (curLine.TrimStart().StartsWith("end") == true)
+                    {
+                        blockStartCount--;
+                        if (blockStartCount == 0)
+                            return eventTradeLines;
+                    }
+
+                    // If we got here, then this is in-context data
+                    eventTradeLines.Add(curLine);
+                }
+            }
+
+            if (startLineFound == true)
+            {
+                exceptionLines.Add(new ExceptionLine(questGiverName, zoneShortName, "Start block found but not fully terminated", 0, ""));
+                return new List<string>();
+            }
+
+            return new List<string>();
+        }
+
+
         public void ExtractQuests()
         {
-            string outputHeaderLine = "zone_shortname|questgiver_name|quest_name|req_repmin|req_item1|req_item2|req_item3|req_item4|req_item5|req_item6|reward_money|reward_exp|reward_item1|reward_item2|reward_item3|reward_item4|reward_item5|reward_item6|reward_faction1ID|reward_faction1Amt|reward_faction2ID|reward_faction2Amt|reward_faction3ID|reward_faction3Amt|reward_faction4ID|reward_faction4Amt|reward_faction5ID|reward_faction5Amt|reward_faction6ID|reward_faction6Amt|reward_dialog|attack_player_after_turnin";
-            List<string> outputQuestLines = new List<string>();
-            outputQuestLines.Add(outputHeaderLine);
+            List<Quest> quests = new List<Quest>();
             List<ExceptionLine> outputExceptionLines = new List<ExceptionLine>();
 
             string zoneQuestFolderRoot = Path.Combine(WorkingQuestRootFolder, "zonequests");
@@ -286,19 +249,11 @@ namespace EQWOWPregenScripts
                     // Questgiver name
                     string questgiverName = Path.GetFileNameWithoutExtension(questNPCFile);
 
-                    // Skip certain quest givers
-                    //if (questgiverName == "Jusean_Evanesque")
-                    //{
-                    //    outputExceptionLines.Add("qeynos|Jusean_Evanesque");
-                    //    continue;
-                    //}
-
                     // Grab the lines of text
                     List<string> lines = new List<string>();
                     using (var sr = new StreamReader(questNPCFile))
                     {
                         string? curLine;
-                        Dictionary<int, int> indexCounts = new Dictionary<int, int>();
                         while ((curLine = sr.ReadLine()) != null)
                         {
                             if (curLine != null)
@@ -306,92 +261,19 @@ namespace EQWOWPregenScripts
                         }
                     }
 
-                    // Look far any quests
-                    var quests = new List<Quest>();
-                    for (int i = 0; i < lines.Count; i++)
+                    // Look far any quests if there is a turnin block
+                    List<string> eventTradeLines = GetEventTradeBlock(questgiverName, zoneShortName, questNPCFile, ref outputExceptionLines);
+                    if (eventTradeLines.Count > 0)
                     {
-                        string line = lines[i];
-                        if (line.Contains("check_turn_in") && line.Contains("item1"))
-                        {
-                            var quest = ParseQuest(lines, i, zoneShortName, questgiverName, ref outputExceptionLines);
-                            if (quest != null)
-                            {
-                                quests.Add(quest);
-                            }
-                        }
-                    }
-
-                    //if (questgiverName == "Sheriff_Roglio")
-                    //{
-                    //    int x = 5;
-                    //    int y = 5;
-                    //}
-
-                    for (int qi = 0; qi < quests.Count; qi++)
-                    {
-                        Quest quest = quests[qi];
-
-                        // Output the found quest
-                        StringBuilder outputLineSB = new StringBuilder();
-                        outputLineSB.Append(zoneShortName);
-                        outputLineSB.Append("|");
-                        outputLineSB.Append(questgiverName);
-                        outputLineSB.Append("|");
-                        outputLineSB.Append(questgiverName.Replace('_', ' ').Replace("#", "") + " Quest " + qi.ToString());
-                        outputLineSB.Append("|");
-                        outputLineSB.Append(quest.MinimumFaction);
-                        outputLineSB.Append("|");
-                        for (int i = 0; i < 6; i++)
-                        {
-                            if (quest.RequiredItems.Count > i)
-                                outputLineSB.Append(quest.RequiredItems[i]);
-                            else
-                                outputLineSB.Append("-1");
-                            outputLineSB.Append("|");
-                        }
-                        outputLineSB.Append(quest.Reward.Money);
-                        outputLineSB.Append("|");
-                        outputLineSB.Append(quest.Reward.Experience);
-                        outputLineSB.Append("|");
-                        for (int i = 0; i < 4; i++)
-                        {
-                            if (quest.Reward.Items.Count > i)
-                                outputLineSB.Append(quest.Reward.Items[i]);
-                            else
-                                outputLineSB.Append("-1");
-                            outputLineSB.Append("|");
-                        }
-                        for (int i = 0; i < 6; i++)
-                        {
-                            if (quest.Reward.FactionChanges.Count > i)
-                            {
-                                outputLineSB.Append(quest.Reward.FactionChanges[i].FactionId);
-                                outputLineSB.Append("|");
-                                outputLineSB.Append(quest.Reward.FactionChanges[i].ChangeAmount);
-                                outputLineSB.Append("|");
-                            }
-                            else
-                            {
-                                outputLineSB.Append("-1");
-                                outputLineSB.Append("|");
-                                outputLineSB.Append("0");
-                                outputLineSB.Append("|");
-                            }
-                        }
-                        outputLineSB.Append(quest.Dialogue);
-                        outputLineSB.Append("|");
-                        outputLineSB.Append(quest.Reward.AttackPlayerOnTurnin == true ? "1" : "0");
-                        outputQuestLines.Add(outputLineSB.ToString());
-                    }
+                        Quest? quest = ParseQuest(eventTradeLines, zoneShortName, questgiverName, ref outputExceptionLines);
+                        if (quest != null)
+                            quests.Add(quest);
+                    }                    
                 }
             }
 
-            // Output the quest files
-            if (File.Exists(OutputQuestFile))
-                File.Delete(OutputQuestFile);
-            using (var outputFile = new StreamWriter(OutputQuestFile))
-                foreach (string outputLine in outputQuestLines)
-                    outputFile.WriteLine(outputLine);
+            OutputQuests(quests);
+            
             if (File.Exists(OutputExceptionQuestFile))
                 File.Delete(OutputExceptionQuestFile);
             using (var outputFile = new StreamWriter(OutputExceptionQuestFile))
@@ -400,6 +282,77 @@ namespace EQWOWPregenScripts
                 foreach (ExceptionLine exceptionLine in outputExceptionLines)
                     outputFile.WriteLine(exceptionLine.DataToString());
             }
+        }
+    
+        private void OutputQuests(List<Quest> quests)
+        {
+            string outputHeaderLine = "zone_shortname|questgiver_name|quest_name|req_repmin|req_item1|req_item2|req_item3|req_item4|req_item5|req_item6|reward_money|reward_exp|reward_item1|reward_item2|reward_item3|reward_item4|reward_item5|reward_item6|reward_faction1ID|reward_faction1Amt|reward_faction2ID|reward_faction2Amt|reward_faction3ID|reward_faction3Amt|reward_faction4ID|reward_faction4Amt|reward_faction5ID|reward_faction5Amt|reward_faction6ID|reward_faction6Amt|reward_dialog|attack_player_after_turnin";
+            List<string> outputQuestLines = new List<string>();
+            outputQuestLines.Add(outputHeaderLine);
+
+            for (int qi = 0; qi < quests.Count; qi++)
+            {
+                Quest quest = quests[qi];
+
+                // Output the found quest
+                StringBuilder outputLineSB = new StringBuilder();
+                outputLineSB.Append(quest.ZoneShortName);
+                outputLineSB.Append("|");
+                outputLineSB.Append(quest.QuestgiverName);
+                outputLineSB.Append("|");
+                outputLineSB.Append(quest.QuestgiverName.Replace('_', ' ').Replace("#", "") + " Quest " + qi.ToString());
+                outputLineSB.Append("|");
+                outputLineSB.Append(quest.MinimumFaction);
+                outputLineSB.Append("|");
+                for (int i = 0; i < 6; i++)
+                {
+                    if (quest.RequiredItems.Count > i)
+                        outputLineSB.Append(quest.RequiredItems[i]);
+                    else
+                        outputLineSB.Append("-1");
+                    outputLineSB.Append("|");
+                }
+                outputLineSB.Append(quest.Reward.Money);
+                outputLineSB.Append("|");
+                outputLineSB.Append(quest.Reward.Experience);
+                outputLineSB.Append("|");
+                for (int i = 0; i < 4; i++)
+                {
+                    if (quest.Reward.Items.Count > i)
+                        outputLineSB.Append(quest.Reward.Items[i]);
+                    else
+                        outputLineSB.Append("-1");
+                    outputLineSB.Append("|");
+                }
+                for (int i = 0; i < 6; i++)
+                {
+                    if (quest.Reward.FactionChanges.Count > i)
+                    {
+                        outputLineSB.Append(quest.Reward.FactionChanges[i].FactionId);
+                        outputLineSB.Append("|");
+                        outputLineSB.Append(quest.Reward.FactionChanges[i].ChangeAmount);
+                        outputLineSB.Append("|");
+                    }
+                    else
+                    {
+                        outputLineSB.Append("-1");
+                        outputLineSB.Append("|");
+                        outputLineSB.Append("0");
+                        outputLineSB.Append("|");
+                    }
+                }
+                outputLineSB.Append(quest.Dialogue);
+                outputLineSB.Append("|");
+                outputLineSB.Append(quest.Reward.AttackPlayerOnTurnin == true ? "1" : "0");
+                outputQuestLines.Add(outputLineSB.ToString());
+            }
+
+            // Output the quest files
+            if (File.Exists(OutputQuestFile))
+                File.Delete(OutputQuestFile);
+            using (var outputFile = new StreamWriter(OutputQuestFile))
+                foreach (string outputLine in outputQuestLines)
+                    outputFile.WriteLine(outputLine);
         }
     }
 }
