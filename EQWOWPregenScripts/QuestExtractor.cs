@@ -17,18 +17,22 @@
 // TODO
 // Timer Events
 //  - airplane\#Master_of_Elements
-//  - function event_timer(e)
+//      - function event_timer(e)
 // Spawn Events
 //  - airplane\#Master_of_elements
-//  - function event_spawn(e)
-//  - eq.depop()
+//      - function event_spawn(e)
+//      - eq.depop()
+//  - airplane\Magnus_Frinon
+//      - eq.spawn2
 // Subconditionals for rewards
 //  - akanon\Manik_Compolten
-//  - if(math.random(100) < 20) then
+//      - if(math.random(100) < 20) then
 // Random and Choose Random
 //  - akanon\Manik_Compolten
-//  - math.random(0,10)
-//  - eq.ChooseRandom
+//      - math.random(0,10)
+//      - eq.ChooseRandom
+// elseif on check_turn_in
+//  - airplane\Inte_Akera
 
 using System.Text;
 
@@ -192,6 +196,14 @@ namespace EQWOWPregenScripts
                 return null;
             if (workingLine.Contains("ChooseRandom"))
                 return null;
+            if (workingLine.Contains("GetFaction"))
+                return null;
+            if (workingLine.Contains("copper"))
+                return null;
+            if (workingLine.Contains("gold"))
+                return null;
+            if (workingLine.Contains("platinum"))
+                return null;
             //if (line.Contains("items ="))
             //    return null;
             //if (line.Contains("exp ="))
@@ -274,7 +286,7 @@ namespace EQWOWPregenScripts
             {
                 string line = lines[i].Split("--")[0].Trim(); // Dump the comment
 
-                // Required items
+                // Look at requirements
                 if (line.Contains("check_turn_in"))
                 {
                     // Multi-part conditionals should be skipped and done manually
@@ -283,13 +295,13 @@ namespace EQWOWPregenScripts
                         exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "check_turn_in has 'or' conditional", i, line));
                         continue;
                     }
-
-                    if (line.Contains("{"))
+                    if (line.Contains("text"))
                     {
-                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "check_turn_in has '{'", i, line));
+                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "check_turn_in has text", i, line));
                         continue;
                     }
 
+                    // Required Items
                     // For now, just catch any instances where there is a second
                     if (quest.RequiredItems.Count > 0)
                     {
@@ -298,9 +310,46 @@ namespace EQWOWPregenScripts
                     }
                     else
                         quest.RequiredItems.AddRange(GetRequiredItemIDsFromLine(line));
+
+                    // Required Faction
+                    if (line.Contains("Faction"))
+                    {
+                        // Faction is always first, it seems
+                        string workingLine = line.Trim().Replace("if", "").TrimStart();
+                        string[] blocks = workingLine.Split(" ");
+                        
+                        // Faction level
+                        if (workingLine.Contains("GetFaction("))
+                        {
+                            int minFactionLevel = int.Parse(blocks[2]);
+                            if (blocks[1] == "<")
+                                minFactionLevel--;
+                            quest.MinimumFaction = GetFactionValueFromFactionLevel(minFactionLevel);
+                        }
+
+                        // Faction value
+                        else
+                        {
+                            int minFactionValue = int.Parse(blocks[2]);
+                        }
+                    }
                 }
             }
             return quest;
+        }
+
+        static int GetFactionValueFromFactionLevel(int factionLevel)
+        {
+            switch (factionLevel)
+            {
+                case 1: return 1100; // Ally
+                case 2: return 750; // Warmly
+                case 3: return 500; // Kindly
+                case 4: return 100; // Amiably
+                case 5: return 0; // Indifferently
+                case 6: return -100; // Apprhensively
+                default: throw new Exception("Unhandled faction level of " + factionLevel);
+            }
         }
 
         static protected List<string> GetEventTradeBlock(string questGiverName, string zoneShortName, string fileFullPath, ref List<ExceptionLine> exceptionLines)
