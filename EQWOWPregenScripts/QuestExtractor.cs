@@ -96,14 +96,14 @@ namespace EQWOWPregenScripts
         }
 
 
-        private Quest ParseQuest(List<string> lines, int startIndex, string zoneShortName, string questGiverName, ref List<ExceptionLine> exceptionLines)
+        private Quest? ParseQuest(List<string> lines, int startIndex, string zoneShortName, string questGiverName, ref List<ExceptionLine> exceptionLines)
         {
             var quest = new Quest();
-            
+
             // Operate on all lines or until the end of the quest area
             for (int i = startIndex; i < lines.Count; i++)
             {
-                string line = lines[startIndex].Split("--")[0].Trim(); // Dump the comment
+                string line = lines[i].Split("--")[0].Trim(); // Dump the comment
 
                 // Required items
                 if (line.Contains("check_turn_in"))
@@ -126,7 +126,12 @@ namespace EQWOWPregenScripts
                 }
 
                 if (line.Contains("end"))
-                    return quest;
+                {
+                    if (quest.RequiredItems.Count == 0)
+                        return null;
+                    else
+                        return quest;
+                }
                 //if (line.Contains(""))
             }
             return quest;       
