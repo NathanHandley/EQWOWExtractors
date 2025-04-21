@@ -24,6 +24,8 @@
 //      - eq.depop()
 //  - airplane\Magnus_Frinon
 //      - eq.spawn2
+//  - airplane\a_thunder_spirit_princess
+//      - eq.unique_spawn(71073,0,0,287.9,662.5,-54.1,109.3); -- NPC: Gkzzallk
 // Subconditionals for rewards
 //  - akanon\Manik_Compolten
 //      - if(math.random(100) < 20) then
@@ -35,17 +37,30 @@
 //  - airplane\Inte_Akera
 // Say events that summon items
 //  - airplane\Cilin_Spellsinger
-//  - e.other:SummonCursorItem(18542); -- The Flute
+//      - e.other:SummonCursorItem(18542); -- The Flute
 // Combat events (event_combat(e)
 //  - airplane\Sirran_the_lunatic
 // Multiple of the same quest item
 //  - akanon\Larkon_Theardor
-//  - if(e.other:GetFactionValue(e.self) >= -100 and item_lib.check_turn_in(e.self, e.trade, {item1 = 13077, item2 = 13077},1,text)) then -- Minotaur Horn x 2
+//      - if(e.other:GetFactionValue(e.self) >= -100 and item_lib.check_turn_in(e.self, e.trade, {item1 = 13077, item2 = 13077},1,text)) then -- Minotaur Horn x 2
+// Hail
+//  - cabeast\Hierophant_Oxyn
+//      - if(e.message:findi("hail")) then
+// Name Extraction
+//  - airplane\a_thunder_spirit_princess
+//      - e.self:Say("Thank you, " .. e.other:GetCleanName() .. ". I will tell him to expect visitors.");
+// Money as a requirement
+//  - airplane\a_thunder_spirit_princess
+//      - if(item_lib.check_turn_in(e.self, e.trade, {gold = 10})) then
+// Death Events
+//  - airplane\a_thunder_spirit_princess
+//      - function event_death_complete(e)
+// Rewards to cursor
+//  - global\Priest_of_Discord
+//      - e.other:SummonCursorItem(18700); -- Item: Tome of Order and Discord
 
-using System;
 using System.Text;
 using System.Text.RegularExpressions;
-using static EQWOWPregenScripts.QuestExtractor;
 
 namespace EQWOWPregenScripts
 {
@@ -149,15 +164,31 @@ namespace EQWOWPregenScripts
             public string QuestgiverName = string.Empty;
             public List<int> RequiredItems = new List<int>(); // Item IDs for turn-in
             public QuestReward Reward = new QuestReward();
-            public List<string> Dialogue = new List<string>(); // NPC Say statements
             public int MinimumFaction= -1; // Minimum faction value required
             public int MinimumExpansion = -1;
+            public string RequestText = string.Empty;
+            public string RewardText = string.Empty;
+            public string RewardEmote = string.Empty;            
 
             public Quest(string zoneShortName, string questGiverName)
             {
                 ZoneShortName = zoneShortName;
                 QuestgiverName = questGiverName;
             }
+        }
+
+        static private bool StringHasTwoFragments(string inputString, string fragment)
+        {
+            if (string.IsNullOrEmpty(inputString) || string.IsNullOrEmpty(fragment))
+                return false;
+
+            int firstIndex = inputString.IndexOf(fragment, StringComparison.OrdinalIgnoreCase);
+            if (firstIndex == -1)
+                return false;
+
+            // Search for the second occurrence after the first
+            int secondIndex = inputString.IndexOf(fragment, firstIndex + fragment.Length, StringComparison.OrdinalIgnoreCase);
+            return secondIndex != -1;
         }
 
         private List<string> GetParameterValuesAfterParameterToken(string line, string parameterToken)
@@ -207,6 +238,19 @@ namespace EQWOWPregenScripts
                 }
             }
             return requiredItemIDs;
+        }
+
+        private string GetTextVariableNameFromLine(string line)
+        {
+            string[] lineBlocks = line.Replace("then", "").Trim().Split(",");
+            for (int i = 0; i < lineBlocks.Length; i++)
+            {
+                if (lineBlocks[i].Contains("text"))
+                {
+                    return lineBlocks[i].Replace(")", "").Trim();
+                }
+            }
+            return string.Empty;
         }
 
         private QuestReward? GetQuestRewardFromLine(string line, string zoneShortName, string questgiverName, ref List<ExceptionLine> exceptionLines)
@@ -331,6 +375,7 @@ namespace EQWOWPregenScripts
         {
             List<Quest> returnQuests = new List<Quest>();
             Quest? currentQuest = null;
+            Dictionary<string, string> foundTextLinesByTextVariableName = new Dictionary<string, string>();
             for (int i = 0; i < lines.Count; i++)
             {
                 string line = lines[i].Split("--")[0].Trim(); // Dump the comment
@@ -346,32 +391,39 @@ namespace EQWOWPregenScripts
                         continue;
                     }
 
+                    // Look for expansion limits
+                    int minimumExpansion = -1;
+                    if (line.Contains("eq.is_the_scars_of_velious_enabled() and "))
+                    {
+                        minimumExpansion = 2;
+                        line = line.Replace("eq.is_the_scars_of_velious_enabled() and ", "");
+                    }
+
                     // Multi-part conditionals should be skipped and done manually
                     if (line.Contains(" or "))
                     {
                         exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "check_turn_in has 'or' conditional", i, line));
                         continue;
                     }
-                    if (line.Contains("text"))
-                    {
-                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "check_turn_in has 'text'", i, line));
-                        continue;
-                    }
+                    //if (line.Contains("text"))
+                    //{
+                    //    exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "check_turn_in has 'text'", i, line));
+                    //    continue;
+                    //}
                     if (line.Contains("not"))
                     {
                         exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "check_turn_in has 'not'", i, line));
                         continue;
                     }
+                    if (StringHasTwoFragments(line, " and "))
+                    {
+                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "check_turn_in has two 'and'", i, line));
+                        continue;
+                    }
 
                     // Start a new quest then
                     currentQuest = new Quest(zoneShortName, questgiverName);
-
-                    // Look for expansion limits
-                    if (line.Contains("eq.is_the_scars_of_velious_enabled() and "))
-                    {
-                        currentQuest.MinimumExpansion = 2;
-                        line = line.Replace("eq.is_the_scars_of_velious_enabled() and ", "");
-                    }
+                    currentQuest.MinimumExpansion = minimumExpansion;
 
                     // Required Items
                     currentQuest.RequiredItems.AddRange(GetRequiredItemIDsFromLine(line));
@@ -399,10 +451,33 @@ namespace EQWOWPregenScripts
                             int minFactionValue = int.Parse(blocks[2].Replace(")", ""));
                         }
                     }
+
+                    // Text line
+                    if (line.Contains("text"))
+                    {
+                        string textVariableName = GetTextVariableNameFromLine(line);
+                        if (foundTextLinesByTextVariableName.ContainsKey(textVariableName) ==  false)
+                            exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "found a text line named " + textVariableName + " but it wasn't defined", i, line));
+                        else
+                            currentQuest.RequestText = foundTextLinesByTextVariableName[textVariableName];
+                    }
+                }
+                
+                // Text Line
+                else if(line.Contains("local text") == true)
+                {
+                    // Grab variable name
+                    string[] parts = line.Split(" ");
+                    string variableName = parts[1];
+                    string value = line.Substring(line.IndexOf('"'));
+                    if (foundTextLinesByTextVariableName.ContainsKey(variableName))
+                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Found a second text variable named " + variableName + " while parsing a quest", i, line));
+                    else
+                        foundTextLinesByTextVariableName.Add(variableName, value);
                 }
 
-                // Request reward
-                if (line.Contains("QuestReward") == true)
+                // Reward
+                else if (line.Contains("QuestReward") == true)
                 {
                     if (currentQuest == null)
                     {
@@ -423,6 +498,8 @@ namespace EQWOWPregenScripts
                 }
             }
 
+            if (currentQuest != null)
+                returnQuests.Add(currentQuest);
             return returnQuests;
         }
 
@@ -439,14 +516,6 @@ namespace EQWOWPregenScripts
                 default: throw new Exception("Unhandled faction level of " + factionLevel);
             }
         }
-
-        //static protected List<List<string>> GetQuestBlocks(string questGiverName, string zoneShortName, string fileFullPath, ref List<ExceptionLine> exceptionLines)
-        //{
-        //    List<string> eventTradeBlock = GetEventTradeBlock(questGiverName, zoneShortName, fileFullPath, ref exceptionLines);
-
-
-
-        //}
 
         static protected List<string> GetEventTradeBlock(string questGiverName, string zoneShortName, string fileFullPath, ref List<ExceptionLine> exceptionLines)
         {
@@ -571,7 +640,7 @@ namespace EQWOWPregenScripts
                 outputHeaderSB.Append(i);
                 outputHeaderSB.Append("|");
             }
-            outputHeaderSB.Append("reward_faction1ID|reward_faction1Amt|reward_faction2ID|reward_faction2Amt|reward_faction3ID|reward_faction3Amt|reward_faction4ID|reward_faction4Amt|reward_faction5ID|reward_faction5Amt|reward_faction6ID|reward_faction6Amt|reward_dialog|attack_player_after_turnin|min_expansion");
+            outputHeaderSB.Append("reward_faction1ID|reward_faction1Amt|reward_faction2ID|reward_faction2Amt|reward_faction3ID|reward_faction3Amt|reward_faction4ID|reward_faction4Amt|reward_faction5ID|reward_faction5Amt|reward_faction6ID|reward_faction6Amt|attack_player_after_turnin|request_text|min_expansion");
             string outputHeaderLine = outputHeaderSB.ToString();
             List<string> outputQuestLines = new List<string>();
             outputQuestLines.Add(outputHeaderLine);
@@ -640,9 +709,9 @@ namespace EQWOWPregenScripts
                         outputLineSB.Append("|");
                     }
                 }
-                outputLineSB.Append(quest.Dialogue);
-                outputLineSB.Append("|");
                 outputLineSB.Append(quest.Reward.AttackPlayerOnTurnin == true ? "1" : "0");
+                outputLineSB.Append("|");
+                outputLineSB.Append(quest.RequestText);
                 outputLineSB.Append("|");
                 outputLineSB.Append(quest.MinimumExpansion);
                 outputQuestLines.Add(outputLineSB.ToString());
