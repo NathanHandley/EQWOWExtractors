@@ -33,10 +33,19 @@
 //      - eq.ChooseRandom
 // elseif on check_turn_in
 //  - airplane\Inte_Akera
+// Say events that summon items
+//  - airplane\Cilin_Spellsinger
+//  - e.other:SummonCursorItem(18542); -- The Flute
+// Combat events (event_combat(e)
+//  - airplane\Sirran_the_lunatic
+// Multiple of the same quest item
+//  - akanon\Larkon_Theardor
+//  - if(e.other:GetFactionValue(e.self) >= -100 and item_lib.check_turn_in(e.self, e.trade, {item1 = 13077, item2 = 13077},1,text)) then -- Minotaur Horn x 2
 
 using System;
 using System.Text;
 using System.Text.RegularExpressions;
+using static EQWOWPregenScripts.QuestExtractor;
 
 namespace EQWOWPregenScripts
 {
@@ -142,6 +151,7 @@ namespace EQWOWPregenScripts
             public QuestReward Reward = new QuestReward();
             public List<string> Dialogue = new List<string>(); // NPC Say statements
             public int MinimumFaction= -1; // Minimum faction value required
+            public int MinimumExpansion = -1;
 
             public Quest(string zoneShortName, string questGiverName)
             {
@@ -229,12 +239,6 @@ namespace EQWOWPregenScripts
                 return null;
             if (workingLine.Contains("silver"))
                 return null;
-            //if (line.Contains("items ="))
-            //    return null;
-            //if (line.Contains("exp ="))
-            //    return null;
-            //if (line.Contains("itemid ="))
-            //    return null;
 
             // There are two reward line patterns:
             // - One that is a normal parameter list separated by comma
@@ -323,51 +327,25 @@ namespace EQWOWPregenScripts
         }
 
 
-        private Quest? ParseQuest(List<string> lines, string zoneShortName, string questgiverName, ref List<ExceptionLine> exceptionLines)
+        private List<Quest> ParseQuests(List<string> lines, string zoneShortName, string questgiverName, ref List<ExceptionLine> exceptionLines)
         {
-            var quest = new Quest(zoneShortName, questgiverName);
-
-            // Grab the relevant lines
-            int rewardsLineIndex = -1;
+            List<Quest> returnQuests = new List<Quest>();
+            Quest? currentQuest = null;
             for (int i = 0; i < lines.Count; i++)
             {
                 string line = lines[i].Split("--")[0].Trim(); // Dump the comment
 
-                // Rewards
-                if (line.Contains("QuestReward") == true)
-                {
-                    if (rewardsLineIndex == -1)
-                        rewardsLineIndex = i;
-                    else
-                    {
-                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Additional QuestReward line found", i, line));
-                        continue;
-                    }
-                }
-            }
-
-            // Calculate the reward
-            if (rewardsLineIndex == -1)
-            {
-                exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "No rewards line found for trade block", 0, string.Empty));
-                return null;
-            }
-            QuestReward? questReward = GetQuestRewardFromLine(lines[rewardsLineIndex], zoneShortName, questgiverName, ref exceptionLines);
-            if (questReward == null)
-            {
-                exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Rewards line found, but could not parse", rewardsLineIndex, lines[rewardsLineIndex]));
-                return null;
-            }
-            quest.Reward = questReward;
-
-            // Operate on all lines or until the end of the quest area
-            for (int i = 0; i < lines.Count; i++)
-            {
-                string line = lines[i].Split("--")[0].Trim(); // Dump the comment
-
-                // Look at requirements
+                // If requirements are found, then this starts a new quest
                 if (line.Contains("check_turn_in"))
                 {
+                    // If rewards haven't been found but an open quest was started, then reset the block.  Probably just a text response.
+                    if (currentQuest != null)
+                    {
+                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "check_turn_in found before finishing rewards on prior possible quest", i, line));
+                        currentQuest = null;
+                        continue;
+                    }
+
                     // Multi-part conditionals should be skipped and done manually
                     if (line.Contains(" or "))
                     {
@@ -376,34 +354,43 @@ namespace EQWOWPregenScripts
                     }
                     if (line.Contains("text"))
                     {
-                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "check_turn_in has text", i, line));
+                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "check_turn_in has 'text'", i, line));
+                        continue;
+                    }
+                    if (line.Contains("not"))
+                    {
+                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "check_turn_in has 'not'", i, line));
                         continue;
                     }
 
-                    // Required Items
-                    // For now, just catch any instances where there is a second
-                    if (quest.RequiredItems.Count > 0)
+                    // Start a new quest then
+                    currentQuest = new Quest(zoneShortName, questgiverName);
+
+                    // Look for expansion limits
+                    if (line.Contains("eq.is_the_scars_of_velious_enabled() and "))
                     {
-                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Already have required items", i,line));
-                        continue;
+                        currentQuest.MinimumExpansion = 2;
+                        line = line.Replace("eq.is_the_scars_of_velious_enabled() and ", "");
                     }
-                    else
-                        quest.RequiredItems.AddRange(GetRequiredItemIDsFromLine(line));
+
+                    // Required Items
+                    currentQuest.RequiredItems.AddRange(GetRequiredItemIDsFromLine(line));
 
                     // Required Faction
                     if (line.Contains("Faction"))
                     {
                         // Faction is always first, it seems
                         string workingLine = line.Trim().Replace("if", "").TrimStart();
+                        workingLine = workingLine.Trim().Replace("else", "").TrimStart();
                         string[] blocks = workingLine.Split(" ");
-                        
+
                         // Faction level
                         if (workingLine.Contains("GetFaction("))
                         {
                             int minFactionLevel = int.Parse(blocks[2].Replace(")", ""));
                             if (blocks[1] == "<")
                                 minFactionLevel--;
-                            quest.MinimumFaction = GetFactionValueFromFactionLevel(minFactionLevel);
+                            currentQuest.MinimumFaction = GetFactionValueFromFactionLevel(minFactionLevel);
                         }
 
                         // Faction value
@@ -413,8 +400,30 @@ namespace EQWOWPregenScripts
                         }
                     }
                 }
+
+                // Request reward
+                if (line.Contains("QuestReward") == true)
+                {
+                    if (currentQuest == null)
+                    {
+                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "QuestReward found but there was no check_turn_in proceeding it", i, line));
+                        continue;
+                    }
+
+                    QuestReward? questReward = GetQuestRewardFromLine(line, zoneShortName, questgiverName, ref exceptionLines);
+                    if (questReward == null)
+                    {
+                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Rewards line found, but could not parse", i, line));
+                        currentQuest = null;
+                        continue;
+                    }
+                    currentQuest.Reward = questReward;
+                    returnQuests.Add(currentQuest);
+                    currentQuest = null;
+                }
             }
-            return quest;
+
+            return returnQuests;
         }
 
         static int GetFactionValueFromFactionLevel(int factionLevel)
@@ -430,6 +439,14 @@ namespace EQWOWPregenScripts
                 default: throw new Exception("Unhandled faction level of " + factionLevel);
             }
         }
+
+        //static protected List<List<string>> GetQuestBlocks(string questGiverName, string zoneShortName, string fileFullPath, ref List<ExceptionLine> exceptionLines)
+        //{
+        //    List<string> eventTradeBlock = GetEventTradeBlock(questGiverName, zoneShortName, fileFullPath, ref exceptionLines);
+
+
+
+        //}
 
         static protected List<string> GetEventTradeBlock(string questGiverName, string zoneShortName, string fileFullPath, ref List<ExceptionLine> exceptionLines)
         {
@@ -481,7 +498,6 @@ namespace EQWOWPregenScripts
             return new List<string>();
         }
 
-
         public void ExtractQuests()
         {
             List<Quest> quests = new List<Quest>();
@@ -516,10 +532,11 @@ namespace EQWOWPregenScripts
                     List<string> eventTradeLines = GetEventTradeBlock(questgiverName, zoneShortName, questNPCFile, ref outputExceptionLines);
                     if (eventTradeLines.Count > 0)
                     {
-                        Quest? quest = ParseQuest(eventTradeLines, zoneShortName, questgiverName, ref outputExceptionLines);
-                        if (quest != null)
+                        List<Quest> curGiverQuests = ParseQuests(eventTradeLines, zoneShortName, questgiverName, ref outputExceptionLines);
+                        for (int i = 0; i < curGiverQuests.Count; i++)
                         {
-                            quest.Name = questgiverName.Replace('_', ' ').Replace("#", "") + " Quest 1";
+                            Quest quest = curGiverQuests[i];
+                            quest.Name = questgiverName.Replace('_', ' ').Replace("#", "") + " Quest " + i;
                             quests.Add(quest);
                         }
                     }                    
@@ -554,7 +571,7 @@ namespace EQWOWPregenScripts
                 outputHeaderSB.Append(i);
                 outputHeaderSB.Append("|");
             }
-            outputHeaderSB.Append("reward_faction1ID|reward_faction1Amt|reward_faction2ID|reward_faction2Amt|reward_faction3ID|reward_faction3Amt|reward_faction4ID|reward_faction4Amt|reward_faction5ID|reward_faction5Amt|reward_faction6ID|reward_faction6Amt|reward_dialog|attack_player_after_turnin");
+            outputHeaderSB.Append("reward_faction1ID|reward_faction1Amt|reward_faction2ID|reward_faction2Amt|reward_faction3ID|reward_faction3Amt|reward_faction4ID|reward_faction4Amt|reward_faction5ID|reward_faction5Amt|reward_faction6ID|reward_faction6Amt|reward_dialog|attack_player_after_turnin|min_expansion");
             string outputHeaderLine = outputHeaderSB.ToString();
             List<string> outputQuestLines = new List<string>();
             outputQuestLines.Add(outputHeaderLine);
@@ -626,6 +643,8 @@ namespace EQWOWPregenScripts
                 outputLineSB.Append(quest.Dialogue);
                 outputLineSB.Append("|");
                 outputLineSB.Append(quest.Reward.AttackPlayerOnTurnin == true ? "1" : "0");
+                outputLineSB.Append("|");
+                outputLineSB.Append(quest.MinimumExpansion);
                 outputQuestLines.Add(outputLineSB.ToString());
             }
 
