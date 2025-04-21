@@ -59,6 +59,7 @@
 //  - global\Priest_of_Discord
 //      - e.other:SummonCursorItem(18700); -- Item: Tome of Order and Discord
 
+using System.Collections.Generic;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -67,7 +68,7 @@ namespace EQWOWPregenScripts
     internal class QuestExtractor
     {
         private string WorkingQuestRootFolder = "E:\\ConverterData\\Quests";
-        private string OutputQuestFile = "E:\\ConverterData\\Quests\\Quests.csv";
+        private string OutputQuestFile = "E:\\ConverterData\\Quests\\QuestTemplates.csv";
         private string OutputExceptionQuestFile = "E:\\ConverterData\\Quests\\Exceptions.csv";
 
         public class ExceptionLine
@@ -126,7 +127,7 @@ namespace EQWOWPregenScripts
         public class ItemReward
         {
             public int ID = 0;
-            public int Count = 1;
+            public int Count = 0;
             public float Chance = 100f;
             public ItemReward(int id, int count, float chance)
             {
@@ -162,7 +163,8 @@ namespace EQWOWPregenScripts
             public string Name = string.Empty;
             public string ZoneShortName = string.Empty;
             public string QuestgiverName = string.Empty;
-            public List<int> RequiredItems = new List<int>(); // Item IDs for turn-in
+            public List<int> RequiredItemIDs = new List<int>(); // Item IDs for turn-in
+            public List<int> RequiredItemCounts = new List<int>();
             public QuestReward Reward = new QuestReward();
             public int MinimumFaction= -1; // Minimum faction value required
             public int MinimumExpansion = -1;
@@ -405,11 +407,6 @@ namespace EQWOWPregenScripts
                         exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "check_turn_in has 'or' conditional", i, line));
                         continue;
                     }
-                    //if (line.Contains("text"))
-                    //{
-                    //    exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "check_turn_in has 'text'", i, line));
-                    //    continue;
-                    //}
                     if (line.Contains("not"))
                     {
                         exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "check_turn_in has 'not'", i, line));
@@ -426,7 +423,25 @@ namespace EQWOWPregenScripts
                     currentQuest.MinimumExpansion = minimumExpansion;
 
                     // Required Items
-                    currentQuest.RequiredItems.AddRange(GetRequiredItemIDsFromLine(line));
+                    List<int> requiredItems = new List<int>();
+                    foreach(int requiredItemID in GetRequiredItemIDsFromLine(line))
+                    {
+                        bool foundExistingItemID = false;
+                        for (int ii = 0; ii < currentQuest.RequiredItemIDs.Count; ii++)
+                        {
+                            if (currentQuest.RequiredItemIDs[ii] == requiredItemID)
+                            {
+                                currentQuest.RequiredItemCounts[ii]++;
+                                foundExistingItemID = true;
+                                break;
+                            }
+                        }
+                        if (foundExistingItemID == false)
+                        {
+                            currentQuest.RequiredItemIDs.Add(requiredItemID);
+                            currentQuest.RequiredItemCounts.Add(1);
+                        }
+                    }
 
                     // Required Faction
                     if (line.Contains("Faction"))
@@ -474,6 +489,11 @@ namespace EQWOWPregenScripts
                         exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Found a second text variable named " + variableName + " while parsing a quest", i, line));
                     else
                         foundTextLinesByTextVariableName.Add(variableName, value);
+                }
+
+                else if (line.Contains("SummonCursorItem"))
+                {
+                    exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "SummonCursorItem found but unhandled", i, line));
                 }
 
                 // Reward
@@ -627,7 +647,17 @@ namespace EQWOWPregenScripts
         private void OutputQuests(List<Quest> quests)
         {
             StringBuilder outputHeaderSB = new StringBuilder();
-            outputHeaderSB.Append("zone_shortname|questgiver_name|quest_name|req_repmin|req_item1|req_item2|req_item3|req_item4|req_item5|req_item6|reward_money|reward_exp|");
+            outputHeaderSB.Append("wow_questid|zone_shortname|questgiver_name|quest_name|req_repmin|");
+            for (int i = 1; i <= 6; i++)
+            {
+                outputHeaderSB.Append("req_item_id");
+                outputHeaderSB.Append(i);
+                outputHeaderSB.Append("|");
+                outputHeaderSB.Append("req_item_count");
+                outputHeaderSB.Append(i);
+                outputHeaderSB.Append("|");
+            }
+            outputHeaderSB.Append("reward_money|reward_exp|");
             for (int i = 1; i <= 20; i++)
             {
                 outputHeaderSB.Append("reward_item_ID");
@@ -648,9 +678,12 @@ namespace EQWOWPregenScripts
             for (int qi = 0; qi < quests.Count; qi++)
             {
                 Quest quest = quests[qi];
+                int questID = 30000 + qi;
 
                 // Output the found quest
                 StringBuilder outputLineSB = new StringBuilder();
+                outputLineSB.Append(questID);
+                outputLineSB.Append("|");
                 outputLineSB.Append(quest.ZoneShortName);
                 outputLineSB.Append("|");
                 outputLineSB.Append(quest.QuestgiverName);
@@ -661,10 +694,18 @@ namespace EQWOWPregenScripts
                 outputLineSB.Append("|");
                 for (int i = 0; i < 6; i++)
                 {
-                    if (quest.RequiredItems.Count > i)
-                        outputLineSB.Append(quest.RequiredItems[i]);
+                    if (quest.RequiredItemIDs.Count > i)
+                    {
+                        outputLineSB.Append(quest.RequiredItemIDs[i]);
+                        outputLineSB.Append("|");
+                        outputLineSB.Append(quest.RequiredItemCounts[i]);
+                    }
                     else
+                    {
                         outputLineSB.Append("-1");
+                        outputLineSB.Append("|");
+                        outputLineSB.Append("0");
+                    }
                     outputLineSB.Append("|");
                 }
                 outputLineSB.Append(quest.Reward.Money);
@@ -686,9 +727,9 @@ namespace EQWOWPregenScripts
                     {
                         outputLineSB.Append("-1");
                         outputLineSB.Append("|");
-                        outputLineSB.Append("-1");
+                        outputLineSB.Append("0");
                         outputLineSB.Append("|");
-                        outputLineSB.Append("-1");
+                        outputLineSB.Append("0");
                         outputLineSB.Append("|");
                     }
                 }
