@@ -62,8 +62,10 @@
 // - eastkarana, Tanal_Redblade
 //  - Very good, you have wreaked havoc on your foes in the ancient land of the giants. Rallos Zek must have guided your blade. (Tenal's voice is suddenly silenced and you feel as if your body is frozen. From Tenal's lips issues a voice that is not his own.) 'Bring this mortal the scales of the children of Veeshan. The red and green as well as my war totem. I will guide your blade.' Your movement returns as Tenal falls to the ground, gasping for breath.
 
+using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.RegularExpressions;
+using static System.Reflection.Metadata.BlobBuilder;
 
 namespace EQWOWPregenScripts
 {
@@ -138,7 +140,7 @@ namespace EQWOWPregenScripts
                 Chance = chance;
             }
         }
-
+        
         public class QuestReward
         {
             public int Money; // Is this in silver?  Looks like it
@@ -166,6 +168,7 @@ namespace EQWOWPregenScripts
             public string QuestgiverName = string.Empty;
             public List<int> RequiredItemIDs = new List<int>(); // Item IDs for turn-in
             public List<int> RequiredItemCounts = new List<int>();
+            public int RequiredMoneyInCopper = 0;
             public QuestReward Reward = new QuestReward();
             public int MinimumFaction= -1; // Minimum faction value required
             public int MinimumExpansion = -1;
@@ -178,6 +181,118 @@ namespace EQWOWPregenScripts
                 ZoneShortName = zoneShortName;
                 QuestgiverName = questGiverName;
             }
+        }
+
+        private static int GetSingleRangedIntFromString(string inputString, string zoneShortName, string questgiverName, ref List<ExceptionLine> exceptionLines)
+        {
+            // Try to just pull it first
+            int parsedValue;
+            bool isValid = int.TryParse(inputString, out parsedValue);
+            if (isValid)
+                return parsedValue;
+
+            // Try to identify the format
+            if (inputString.Contains("math.random"))
+            {
+                List<string> parameters = ExtractMethodParameters(inputString, "random");
+                if (parameters.Count == 0)
+                {
+                    exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Int in string had a random method, but no parameters could be found", 0, inputString));
+                    return 0;
+                }
+
+                int parameter1Value = int.Parse(parameters[0]);
+                if (parameters.Count == 1)
+                {
+                    // Use the midpoint between number and zero
+                    if (parameter1Value == 0)
+                        return 0;
+                    else
+                        return parameter1Value / 2;
+                }
+                else if (parameters.Count == 2)
+                {
+                    // Use a midpoint between the two numbers
+                    int parameter2Value = int.Parse(parameters[1]);
+                    if (parameter2Value == 0)
+                        return 0;
+                    else
+                        return parameter1Value + (parameter2Value - parameter1Value) / 2; 
+                }
+                else
+                {
+                    exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Int in string had a random method, but there were more than 2 parameters found", 0, inputString));
+                    return 0;
+                }
+            }
+
+            return 0;
+        }
+
+        public static List<string> ExtractMethodParameters(string inputLine, string methodName)
+        {
+            // Find the method call
+            string escapedMethodName = Regex.Escape(methodName);
+            string pattern = $@"{escapedMethodName}\(";
+            Match methodMatch = Regex.Match(inputLine, pattern);
+            if (!methodMatch.Success)
+                return new List<string>();
+
+            // Parse the parameters up to the matching closing parenthesis
+            int startIndex = methodMatch.Index + methodMatch.Length;
+            int parenthesisDepth = 1;
+            int i = startIndex;
+
+            // Find the end of the parameter list
+            while (i < inputLine.Length && parenthesisDepth > 0)
+            {
+                char c = inputLine[i];
+                if (c == '(')
+                    parenthesisDepth++;
+                else if (c == ')')
+                    parenthesisDepth--;
+                i++;
+            }
+
+            // Unmatched parenthesis
+            if (parenthesisDepth != 0)
+                return new List<string>();
+
+            // Extract the parameter string
+            string parameters = inputLine.Substring(startIndex, i - startIndex - 1).Trim();
+
+            // plit parameters, respecting nested parentheses
+            List<string> paramList = new List<string>();
+            parenthesisDepth = 0;
+            int paramStart = 0;
+
+            for (int j = 0; j < parameters.Length; j++)
+            {
+                char c = parameters[j];
+
+                if (c == '(')
+                    parenthesisDepth++;
+                else if (c == ')')
+                    parenthesisDepth--;
+                else if (c == ',' && parenthesisDepth == 0)
+                {
+                    // Found a parameter separator at the top level
+                    string param = parameters.Substring(paramStart, j - paramStart).Trim();
+                    if (!string.IsNullOrEmpty(param))
+                        paramList.Add(param);
+                    paramStart = j + 1;
+                }
+            }
+
+            // Add the last parameter
+            if (paramStart < parameters.Length)
+            {
+                string param = parameters.Substring(paramStart).Trim();
+                if (!string.IsNullOrEmpty(param))
+                    paramList.Add(param);
+            }
+
+            return paramList;
         }
 
         static private string ConvertText(string inputTextLine)
@@ -354,12 +469,12 @@ namespace EQWOWPregenScripts
             // TODO: Handle these conditions
             if (workingLine.Contains(" or" ))
                 return null;
-            if (workingLine.Contains("random"))
-                return null;
-            if (workingLine.Contains("ChooseRandom"))
-                return null;
-            if (workingLine.Contains("GetFaction"))
-                return null;
+            //if (workingLine.Contains("random"))
+            //    return null;
+            //if (workingLine.Contains("ChooseRandom"))
+            //    return null;
+            //if (workingLine.Contains("GetFaction"))
+            //    return null;
             if (workingLine.Contains("silver"))
                 return null;
 
@@ -372,78 +487,116 @@ namespace EQWOWPregenScripts
                 // Single item
                 if (workingLine.Contains("itemid") == true)
                 {
-                    string paramaterValue = GetParameterValueAfterParameterToken(workingLine, "itemid");
-                    int itemID = int.Parse(paramaterValue);
-                    returnReward.AddItemReward(itemID);
+                    string parameterValue = GetParameterValueAfterParameterToken(workingLine, "itemid");
+                    if (parameterValue == string.Empty)
+                    {
+                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Could not parse itemid out of the line", 0, line));
+                        return null;
+                    }
+                    else
+                    {
+                        int itemID = int.Parse(parameterValue);
+                        returnReward.AddItemReward(itemID);
+                    }
                 }
 
                 // Group of items
                 if (workingLine.Contains("items"))
                 {
-                    List<string> paramaterValues = GetParameterValuesAfterParameterToken(workingLine, "items");
-                    foreach(string paramaterValue in paramaterValues)
+                    List<string> parameterValues = GetParameterValuesAfterParameterToken(workingLine, "items");
+                    foreach(string parameterValue in parameterValues)
                     {
-                        int itemID = int.Parse(paramaterValue);
-                        returnReward.AddItemReward(itemID);
+                        int itemID;
+                        bool parseSuccess = int.TryParse(parameterValue, out itemID);
+                        if (parseSuccess == false)
+                        {
+                            exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Unable to determine the ItemID from the string " + parameterValue, 0, line));
+                            return null;
+                        }
+                        if (itemID != 0)
+                            returnReward.AddItemReward(itemID);
                     }
                 }
 
                 // Experience
                 if (workingLine.Contains("exp"))
                 {
-                    string paramaterValue = GetParameterValueAfterParameterToken(workingLine, "exp");
-                    returnReward.Experience = int.Parse(paramaterValue);
+                    string parameterValue = GetParameterValueAfterParameterToken(workingLine, "exp");
+                    returnReward.Experience = GetSingleRangedIntFromString(parameterValue, zoneShortName, questgiverName, ref exceptionLines);
                 }
 
                 // Money
                 int copper = 0;
                 if (workingLine.Contains("copper"))
                 {
-                    string paramaterValue = GetParameterValueAfterParameterToken(workingLine, "copper");
-                    copper = int.Parse(paramaterValue);
+                    string parameterValue = GetParameterValueAfterParameterToken(workingLine, "copper");
+                    copper = GetSingleRangedIntFromString(parameterValue, zoneShortName, questgiverName, ref exceptionLines);
                 }
                 int gold = 0;
                 if (workingLine.Contains("gold"))
                 {
-                    string paramaterValue = GetParameterValueAfterParameterToken(workingLine, "gold");
-                    gold = int.Parse(paramaterValue);
+                    string parameterValue = GetParameterValueAfterParameterToken(workingLine, "gold");
+                    gold = GetSingleRangedIntFromString(parameterValue, zoneShortName, questgiverName, ref exceptionLines);
                 }
                 int platinum = 0;
                 if (workingLine.Contains("platinum"))
                 {
-                    string paramaterValue = GetParameterValueAfterParameterToken(workingLine, "platinum");
-                    platinum = int.Parse(paramaterValue);
+                    string parameterValue = GetParameterValueAfterParameterToken(workingLine, "platinum");
+                    platinum = GetSingleRangedIntFromString(parameterValue, zoneShortName, questgiverName, ref exceptionLines);
                 }
                 returnReward.Money = copper + (gold * 10000) + (platinum * 1000000);
             }
             else
             {
-                // Process the line based on length of blocks
-                string rewardDataOnly = workingLine.Replace("e.other:QuestReward(e.self,", "").Trim().Split(")")[0];
-                string[] blocks = rewardDataOnly.Split(",");
-                if (blocks.Length < 4)
-                {
-                    exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Reward line split into " + blocks.Length + " blocks, which is unhandled", 0, line));
-                    return null;
-                }
-                int copper = int.Parse(blocks[0]);
-                int silver = int.Parse(blocks[1]);
-                int gold = int.Parse(blocks[2]);
-                int platinum = int.Parse(blocks[3]);
+                // Get the parameters, and process them
+                List<string> parameters = ExtractMethodParameters(workingLine, "QuestReward");
+                
+                // Target
+                if (parameters[0] != "e.self")
+                    exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Reward line's first parameter is not e.self, so it's unhandled", 0, line));
+
+                // Copper
+                int copper = GetSingleRangedIntFromString(parameters[1], zoneShortName, questgiverName, ref exceptionLines);
+
+                // Silver
+                int silver = 0;
+                if (parameters.Count > 2)
+                    silver = GetSingleRangedIntFromString(parameters[2], zoneShortName, questgiverName, ref exceptionLines);
+
+                // Gold
+                int gold = 0;
+                if (parameters.Count > 3)
+                    gold = GetSingleRangedIntFromString(parameters[3], zoneShortName, questgiverName, ref exceptionLines);
+
+                // Platinum
+                int platinum = 0;
+                if (parameters.Count > 4)
+                    gold = GetSingleRangedIntFromString(parameters[4], zoneShortName, questgiverName, ref exceptionLines);
+
+                // Add/assign the money
                 returnReward.Money = copper + (silver * 100) + (gold * 10000) + (platinum * 1000000);
-                if (blocks.Length > 4)
+
+                // ItemID
+                if (parameters.Count > 5)
                 {
-                    int itemID = int.Parse(blocks[4]);
+                    int itemID;
+                    bool parseSuccess = int.TryParse(parameters[5], out itemID);
+                    if (parseSuccess == false)
+                    {
+                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Unable to determine the ItemID from the string " + parameters[5], 0, line));
+                        return null;
+                    }
                     if (itemID != 0)
                         returnReward.AddItemReward(itemID);
                 }
-                if (blocks.Length > 5)
-                    returnReward.Experience = int.Parse(blocks[5]);
-                if (blocks.Length > 6)
-                {
-                    exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Reward line split into " + blocks.Length + " blocks, which is unhandled", 0, line));
-                    return null;
-                }
+
+                // Experience
+                if (parameters.Count > 6)
+                    returnReward.Experience = GetSingleRangedIntFromString(parameters[6], zoneShortName, questgiverName, ref exceptionLines);
+
+                // Faction and beyond (faction is a bool)
+                if (parameters.Count > 7)
+                    exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Reward line had 7 or more parameters which is unhandled", 0, line));
             }
 
             return returnReward;
