@@ -179,6 +179,17 @@ namespace EQWOWPregenScripts
             }
         }
 
+        static private string ConvertText(string inputTextLine)
+        {
+            string workingText = inputTextLine;
+            workingText = workingText.Replace(".. e.other:GetCleanName() .. \"", "$N");
+            workingText = workingText.Replace(";", "");
+            workingText = workingText.Replace("\"", "");
+            workingText = workingText.Replace("[", "");
+            workingText = workingText.Replace("]", "");
+            return workingText;
+        }
+
         static private bool StringHasTwoFragments(string inputString, string fragment)
         {
             if (string.IsNullOrEmpty(inputString) || string.IsNullOrEmpty(fragment))
@@ -510,7 +521,7 @@ namespace EQWOWPregenScripts
                         if (foundTextLinesByTextVariableName.ContainsKey(textVariableName) ==  false)
                             exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "found a text line named " + textVariableName + " but it wasn't defined", i, line));
                         else
-                            currentQuest.RequestText = foundTextLinesByTextVariableName[textVariableName];
+                            currentQuest.RequestText = ConvertText(foundTextLinesByTextVariableName[textVariableName]);
                     }
                 }
                 
