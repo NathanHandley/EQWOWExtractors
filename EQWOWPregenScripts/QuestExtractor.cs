@@ -58,9 +58,10 @@
 // Rewards to cursor
 //  - global\Priest_of_Discord
 //      - e.other:SummonCursorItem(18700); -- Item: Tome of Order and Discord
+// Text Parse Bug (no ' at the end)
+// - eastkarana, Tanal_Redblade
+//  - Very good, you have wreaked havoc on your foes in the ancient land of the giants. Rallos Zek must have guided your blade. (Tenal's voice is suddenly silenced and you feel as if your body is frozen. From Tenal's lips issues a voice that is not his own.) 'Bring this mortal the scales of the children of Veeshan. The red and green as well as my war totem. I will guide your blade.' Your movement returns as Tenal falls to the ground, gasping for breath.
 
-using System.Collections.Generic;
-using System.Security;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -183,10 +184,45 @@ namespace EQWOWPregenScripts
         {
             string workingText = inputTextLine;
             workingText = workingText.Replace(".. e.other:GetCleanName() .. \"", "$N");
+            workingText = workingText.Replace(" ..e.other:GetName()..", "$N");
+            workingText = workingText.Replace("..e.other:GetName()..", "$N");
+            workingText = workingText.Replace(" .. e.other:Class() .. ", "$C");
+            workingText = workingText.Replace(" .. e.other:Race() .. ", "$R");
             workingText = workingText.Replace(";", "");
             workingText = workingText.Replace("\"", "");
             workingText = workingText.Replace("[", "");
             workingText = workingText.Replace("]", "");
+            if (workingText.Contains("e.self:Say(string.format("))
+            {
+                workingText = workingText.Replace("e.self:Say(string.format(", "");
+                if (workingText.Contains(",e.other:GetName()"))
+                {
+                    workingText = workingText.Replace(",e.other:GetName()", "");
+                    workingText = workingText.Replace("%s", "$N");
+                }
+                else if (workingText.Contains(",e.other:Race()"))
+                {
+                    workingText = workingText.Replace(",e.other:Race()", "");
+                    workingText = workingText.Replace("%s", "$R");
+                }
+                else if (workingText.Contains(",e.other:GetCleanName()"))
+                {
+                    workingText = workingText.Replace(",e.other:GetCleanName()", "");
+                    workingText = workingText.Replace("%s", "$N");
+                }
+                else if (workingText.Contains(", e.other:GetCleanName()"))
+                {
+                    workingText = workingText.Replace(", e.other:GetCleanName()", "");
+                    workingText = workingText.Replace("%s", "$N");
+                }
+            }
+            else if (workingText.Contains("e.self:Say('"))
+            {
+                workingText = workingText.Replace("e.self:Say('", "");
+                workingText = workingText.Replace("'", "");
+            }
+            if (workingText.EndsWith(")"))
+                workingText = workingText.Substring(0, workingText.Length - 1);
             return workingText;
         }
 
@@ -415,13 +451,6 @@ namespace EQWOWPregenScripts
 
         private List<Quest> ParseQuests(List<string> lines, string zoneShortName, string questgiverName, ref List<ExceptionLine> exceptionLines)
         {
-            if (questgiverName == "Sheriff_Roglio")
-            {
-                int x = 5;
-                int y = 5;
-            }
-
-
             List<Quest> returnQuests = new List<Quest>();
             Quest? currentQuest = null;
             Dictionary<string, string> foundTextLinesByTextVariableName = new Dictionary<string, string>();
@@ -524,7 +553,23 @@ namespace EQWOWPregenScripts
                             currentQuest.RequestText = ConvertText(foundTextLinesByTextVariableName[textVariableName]);
                     }
                 }
-                
+
+                // Say line
+                else if (line.Contains("e.self:Say"))
+                {
+                    if (currentQuest == null)
+                    {
+                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Say line found but quest was null", i, line));
+                        continue;
+                    }
+
+                    string formattedLine = ConvertText(line.Replace("e.self:Say(\"", ""));
+                    if (currentQuest.RewardText.Length == 0)
+                        currentQuest.RewardText = formattedLine;
+                    else
+                        currentQuest.RewardText = string.Concat(currentQuest.RequestText, "$B$B", formattedLine);
+                }
+
                 // Text Line
                 else if(line.Contains("local text") == true)
                 {
@@ -737,7 +782,7 @@ namespace EQWOWPregenScripts
                 outputHeaderSB.Append(i);
                 outputHeaderSB.Append("|");
             }
-            outputHeaderSB.Append("reward_faction1ID|reward_faction1Amt|reward_faction2ID|reward_faction2Amt|reward_faction3ID|reward_faction3Amt|reward_faction4ID|reward_faction4Amt|reward_faction5ID|reward_faction5Amt|reward_faction6ID|reward_faction6Amt|attack_player_after_turnin|request_text|min_expansion");
+            outputHeaderSB.Append("reward_faction1ID|reward_faction1Amt|reward_faction2ID|reward_faction2Amt|reward_faction3ID|reward_faction3Amt|reward_faction4ID|reward_faction4Amt|reward_faction5ID|reward_faction5Amt|reward_faction6ID|reward_faction6Amt|attack_player_after_turnin|request_text|reward_text|min_expansion");
             string outputHeaderLine = outputHeaderSB.ToString();
             List<string> outputQuestLines = new List<string>();
             outputQuestLines.Add(outputHeaderLine);
@@ -820,6 +865,8 @@ namespace EQWOWPregenScripts
                 outputLineSB.Append(quest.Reward.AttackPlayerOnTurnin == true ? "1" : "0");
                 outputLineSB.Append("|");
                 outputLineSB.Append(quest.RequestText);
+                outputLineSB.Append("|");
+                outputLineSB.Append(quest.RewardText);
                 outputLineSB.Append("|");
                 outputLineSB.Append(quest.MinimumExpansion);
                 outputQuestLines.Add(outputLineSB.ToString());
