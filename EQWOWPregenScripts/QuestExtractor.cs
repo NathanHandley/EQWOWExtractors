@@ -60,6 +60,7 @@
 //      - e.other:SummonCursorItem(18700); -- Item: Tome of Order and Discord
 
 using System.Collections.Generic;
+using System.Security;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -140,8 +141,7 @@ namespace EQWOWPregenScripts
         public class QuestReward
         {
             public int Money; // Is this in silver?  Looks like it
-            public Dictionary<int, int> ItemCountByIDs = new Dictionary<int, int>();
-            public List<ItemReward> ItemRewards { get; } = new List<ItemReward>();
+            public List<ItemReward> ItemRewards = new List<ItemReward>();
             public int Experience; 
             public List<FactionChange> FactionChanges = new List<FactionChange>();
             public bool AttackPlayerOnTurnin = false; // True if NPC attacks player after turn-in
@@ -254,6 +254,36 @@ namespace EQWOWPregenScripts
             }
             return string.Empty;
         }
+
+        private FactionChange? GetFactionChangeFromLine(string line, string zoneShortName, string questgiverName, ref List<ExceptionLine> exceptionLines)
+        {
+            FactionChange? factionChange = null;
+            // Hard-coded
+            if (zoneShortName == "innothule" && questgiverName == "Lynuga")
+                return null;
+
+            // Strip comments
+            string workingLine = line.Split("--")[0];
+
+            // TODO: Handle these conditions
+            if (workingLine.Contains(" or"))
+                return null;
+            if (workingLine.Contains("random"))
+                return null;
+            if (workingLine.Contains("ChooseRandom"))
+                return null;
+
+            // Clean out the line and pull the values
+            workingLine = workingLine.Replace("e.other:Faction(e.self,", "");
+            workingLine = workingLine.Replace(";", "");
+            string[] blocks = workingLine.Split(",");
+            int factionID = int.Parse(blocks[0]);
+            int changeAmt = int.Parse(blocks[1].Replace(")", ""));
+            factionChange = new FactionChange(factionID, changeAmt);
+
+            return factionChange;
+        }
+
 
         private QuestReward? GetQuestRewardFromLine(string line, string zoneShortName, string questgiverName, ref List<ExceptionLine> exceptionLines)
         {
@@ -372,9 +402,15 @@ namespace EQWOWPregenScripts
             return returnReward;
         }
 
-
         private List<Quest> ParseQuests(List<string> lines, string zoneShortName, string questgiverName, ref List<ExceptionLine> exceptionLines)
         {
+            if (questgiverName == "Sheriff_Roglio")
+            {
+                int x = 5;
+                int y = 5;
+            }
+
+
             List<Quest> returnQuests = new List<Quest>();
             Quest? currentQuest = null;
             Dictionary<string, string> foundTextLinesByTextVariableName = new Dictionary<string, string>();
@@ -496,6 +532,24 @@ namespace EQWOWPregenScripts
                     exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "SummonCursorItem found but unhandled", i, line));
                 }
 
+                // Add Faction
+                else if (line.Contains("e.other:Faction(e.self"))
+                {
+                    if (currentQuest == null)
+                    {
+                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Faction add found but there was no check_turn_in proceeding it", i, line));
+                        continue;
+                    }
+
+                    FactionChange? factionChange = GetFactionChangeFromLine(line, zoneShortName, questgiverName, ref exceptionLines);
+                    if (factionChange == null)
+                    {
+                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Faction add line found, but could not parse", i, line));
+                        continue;
+                    }
+                    currentQuest.Reward.FactionChanges.Add(factionChange);
+                }
+
                 // Reward
                 else if (line.Contains("QuestReward") == true)
                 {
@@ -512,7 +566,9 @@ namespace EQWOWPregenScripts
                         currentQuest = null;
                         continue;
                     }
-                    currentQuest.Reward = questReward;
+                    currentQuest.Reward.ItemRewards = questReward.ItemRewards;
+                    currentQuest.Reward.Money = questReward.Money;
+                    currentQuest.Reward.Experience = questReward.Experience;
                     returnQuests.Add(currentQuest);
                     currentQuest = null;
                 }
