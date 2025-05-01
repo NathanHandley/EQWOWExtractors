@@ -14,26 +14,27 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-using EQWOWPregenScripts;
 using EQWOWPregenScripts.Quests;
 
-List<ExceptionLine> exceptionLines = new List<ExceptionLine>();
-List<Quest> quests = new List<Quest>();
-
-FileProcessor fileProcessor = new FileProcessor();
-string zoneQuestFolderRoot = Path.Combine("E:\\ConverterData\\Quests", "zonequests");
-string[] zoneFolders = Directory.GetDirectories(zoneQuestFolderRoot);
-foreach (string zoneFolder in zoneFolders)
+namespace EQWOWPregenScripts
 {
-    // Shortname
-    string zoneShortName = Path.GetFileName(zoneFolder);
-
-    string[] questNPCFiles = Directory.GetFiles(zoneFolder, "*.lua");
-    foreach (string questNPCFile in questNPCFiles)
+    internal class FileProcessor
     {
-        fileProcessor.ProcessFile(questNPCFile, ref exceptionLines, ref quests);
+        public void ProcessFile(string fullFilePath, ref List<ExceptionLine> exceptionLines, ref List<Quest> quests)
+        {
+            string npcName = Path.GetFileNameWithoutExtension(fullFilePath);
+
+            // Grab the lines of text
+            List<string> lines = new List<string>();
+            using (var sr = new StreamReader(fullFilePath))
+            {
+                string? curLine;
+                while ((curLine = sr.ReadLine()) != null)
+                {
+                    if (curLine != null)
+                        lines.Add(curLine);
+                }
+            }
+        }
     }
 }
-
-Console.WriteLine("Done. Press any key...");
-Console.ReadKey();
