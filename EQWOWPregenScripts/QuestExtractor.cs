@@ -62,10 +62,8 @@
 // - eastkarana, Tanal_Redblade
 //  - Very good, you have wreaked havoc on your foes in the ancient land of the giants. Rallos Zek must have guided your blade. (Tenal's voice is suddenly silenced and you feel as if your body is frozen. From Tenal's lips issues a voice that is not his own.) 'Bring this mortal the scales of the children of Veeshan. The red and green as well as my war totem. I will guide your blade.' Your movement returns as Tenal falls to the ground, gasping for breath.
 
-using System.Security.Cryptography.X509Certificates;
 using System.Text;
 using System.Text.RegularExpressions;
-using static System.Reflection.Metadata.BlobBuilder;
 
 namespace EQWOWPregenScripts
 {
@@ -295,6 +293,133 @@ namespace EQWOWPregenScripts
             return paramList;
         }
 
+
+        public static List<string> ExtractCurlyBraceParameters(string inputString)
+        {
+            List<string> results = new List<string>();
+
+            // Find all top-level curly brace blocks
+            int i = 0;
+            while (i < inputString.Length)
+            {
+                if (inputString[i] == '{')
+                {
+                    int braceDepth = 1;
+                    int startIndex = i + 1; // Start after '{'
+                    i++;
+
+                    // Find the matching closing brace
+                    while (i < inputString.Length && braceDepth > 0)
+                    {
+                        if (inputString[i] == '{')
+                            braceDepth++;
+                        else if (inputString[i] == '}')
+                            braceDepth--;
+                        i++;
+                    }
+
+                    if (braceDepth == 0 && i <= inputString.Length)
+                    {
+                        // Extract the content inside the braces
+                        string innerContent = inputString.Substring(startIndex, i - startIndex - 1).Trim();
+                        if (!string.IsNullOrEmpty(innerContent))
+                        {
+                            // Step 2: Parse key-value pairs
+                            List<(string key, string value)> keyValuePairs = ParseKeyValuePairs(innerContent);
+
+                            // Step 3: Format results
+                            foreach (var pair in keyValuePairs)
+                            {
+                                results.Add($"{pair.key}, {pair.value}");
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    i++;
+                }
+            }
+
+            return results;
+        }
+
+        public static string ExtractCurlyBraceContentRaw(string inputString)
+        {
+            // Find the first opening brace
+            int startIndex = inputString.IndexOf('{');
+            if (startIndex == -1)
+                return string.Empty; // No opening brace found
+
+            // Initialize brace depth and move past the opening brace
+            int braceDepth = 1;
+            int i = startIndex + 1;
+
+            // Find the matching closing brace
+            while (i < inputString.Length && braceDepth > 0)
+            {
+                char c = inputString[i];
+                if (c == '{')
+                    braceDepth++;
+                else if (c == '}')
+                    braceDepth--;
+                i++;
+            }
+
+            // Check if we found a matching closing brace
+            if (braceDepth != 0 || i > inputString.Length)
+                return string.Empty; // Unmatched or malformed braces
+
+            // Extract and trim the content between the braces
+            string content = inputString.Substring(startIndex + 1, i - startIndex - 2).Trim();
+            return content;
+        }
+
+        private static List<(string key, string value)> ParseKeyValuePairs(string content)
+        {
+            List<(string key, string value)> pairs = new List<(string key, string value)>();
+            int braceDepth = 0;
+            int parenthesisDepth = 0;
+            int startIndex = 0;
+            string? currentKey = null;
+
+            for (int i = 0; i < content.Length; i++)
+            {
+                char c = content[i];
+                if (c == '{')
+                    braceDepth++;
+                else if (c == '}')
+                    braceDepth--;
+                else if (c == '(')
+                    parenthesisDepth++;
+                else if (c == ')')
+                    parenthesisDepth--;
+                else if (c == '=' && braceDepth == 0 && parenthesisDepth == 0 && currentKey == null)
+                {
+                    // Found key
+                    currentKey = content.Substring(startIndex, i - startIndex).Trim();
+                    startIndex = i + 1;
+                }
+                else if (c == ',' && braceDepth == 0 && parenthesisDepth == 0 && currentKey != null)
+                {
+                    // Found end of value
+                    string value = content.Substring(startIndex, i - startIndex).Trim();
+                    pairs.Add((currentKey, value));
+                    currentKey = null;
+                    startIndex = i + 1;
+                }
+            }
+
+            // Add the last pair
+            if (currentKey != null && startIndex < content.Length)
+            {
+                string value = content.Substring(startIndex).Trim();
+                pairs.Add((currentKey, value));
+            }
+
+            return pairs;
+        }
+
         static private string ConvertText(string inputTextLine)
         {
             string workingText = inputTextLine;
@@ -475,76 +600,82 @@ namespace EQWOWPregenScripts
             //    return null;
             //if (workingLine.Contains("GetFaction"))
             //    return null;
-            if (workingLine.Contains("silver"))
-                return null;
 
             // There are two reward line patterns:
             // - One that is a normal parameter list separated by comma
             // - One that uses bracket notation { }
             if (workingLine.Contains("{"))
             {
-                // Look for all possible keywords
-                // Single item
-                if (workingLine.Contains("itemid") == true)
-                {
-                    string parameterValue = GetParameterValueAfterParameterToken(workingLine, "itemid");
-                    if (parameterValue == string.Empty)
-                    {
-                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Could not parse itemid out of the line", 0, line));
-                        return null;
-                    }
-                    else
-                    {
-                        int itemID = int.Parse(parameterValue);
-                        returnReward.AddItemReward(itemID);
-                    }
-                }
-
-                // Group of items
-                if (workingLine.Contains("items"))
-                {
-                    List<string> parameterValues = GetParameterValuesAfterParameterToken(workingLine, "items");
-                    foreach(string parameterValue in parameterValues)
-                    {
-                        int itemID;
-                        bool parseSuccess = int.TryParse(parameterValue, out itemID);
-                        if (parseSuccess == false)
-                        {
-                            exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Unable to determine the ItemID from the string " + parameterValue, 0, line));
-                            return null;
-                        }
-                        if (itemID != 0)
-                            returnReward.AddItemReward(itemID);
-                    }
-                }
-
-                // Experience
-                if (workingLine.Contains("exp"))
-                {
-                    string parameterValue = GetParameterValueAfterParameterToken(workingLine, "exp");
-                    returnReward.Experience = GetSingleRangedIntFromString(parameterValue, zoneShortName, questgiverName, ref exceptionLines);
-                }
-
-                // Money
+                // Get the sets
+                List<string> parameterGroups = ExtractCurlyBraceParameters(workingLine);
                 int copper = 0;
-                if (workingLine.Contains("copper"))
-                {
-                    string parameterValue = GetParameterValueAfterParameterToken(workingLine, "copper");
-                    copper = GetSingleRangedIntFromString(parameterValue, zoneShortName, questgiverName, ref exceptionLines);
-                }
+                int silver = 0;
                 int gold = 0;
-                if (workingLine.Contains("gold"))
-                {
-                    string parameterValue = GetParameterValueAfterParameterToken(workingLine, "gold");
-                    gold = GetSingleRangedIntFromString(parameterValue, zoneShortName, questgiverName, ref exceptionLines);
-                }
                 int platinum = 0;
-                if (workingLine.Contains("platinum"))
+                foreach(string parameter in parameterGroups)
                 {
-                    string parameterValue = GetParameterValueAfterParameterToken(workingLine, "platinum");
-                    platinum = GetSingleRangedIntFromString(parameterValue, zoneShortName, questgiverName, ref exceptionLines);
+                    string[] blocks = parameter.Split(",");
+                    switch(blocks[0])
+                    {
+                        case "itemid":
+                            {
+                                int itemID;
+                                bool parseSuccess = int.TryParse(blocks[1], out itemID);
+                                if (parseSuccess == false)
+                                {
+                                    exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Could not parse itemid out of the line", 0, line));
+                                    return null;
+                                }
+                                else
+                                    returnReward.AddItemReward(itemID);
+                            } break;
+                        case "items":
+                            {
+                                string itemsBlock = ExtractCurlyBraceContentRaw(parameter);
+                                string[] itemBlocks = itemsBlock.Split(",");
+                                foreach (string parameterValue in itemBlocks)
+                                {
+                                    int itemID;
+                                    bool parseSuccess = int.TryParse(parameterValue, out itemID);
+                                    if (parseSuccess == false)
+                                    {
+                                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Could not parse itemid out of the line", 0, line));
+                                        return null;
+                                    }
+                                    else
+                                        returnReward.AddItemReward(itemID);
+                                }
+                            } break;
+                        case "exp":
+                            {
+                                returnReward.Experience = GetSingleRangedIntFromString(blocks[1], zoneShortName, questgiverName, ref exceptionLines);
+                            } break;
+                        case "copper":
+                            {
+                                copper = GetSingleRangedIntFromString(blocks[1], zoneShortName, questgiverName, ref exceptionLines);
+                            } break;
+                        case "silver":
+                            {
+                                silver = GetSingleRangedIntFromString(blocks[1], zoneShortName, questgiverName, ref exceptionLines);
+                            }
+                            break;
+                        case "gold":
+                            {
+                                gold = GetSingleRangedIntFromString(blocks[1], zoneShortName, questgiverName, ref exceptionLines);
+                            }
+                            break;
+                        case "platinum":
+                            {
+                                platinum = GetSingleRangedIntFromString(blocks[1], zoneShortName, questgiverName, ref exceptionLines);
+                            }
+                            break;
+                        default:
+                            {
+                                exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Unhandled parameter block inside curly brace line with key " + blocks[0], 0, line));
+                            } break;
+                    }
                 }
-                returnReward.Money = copper + (gold * 10000) + (platinum * 1000000);
+                returnReward.Money = copper + (silver * 100) + (gold * 10000) + (platinum * 1000000);
             }
             else
             {
@@ -653,7 +784,7 @@ namespace EQWOWPregenScripts
 
                     // Required Items
                     List<int> requiredItems = new List<int>();
-                    foreach(int requiredItemID in GetRequiredItemIDsFromLine(line))
+                    foreach (int requiredItemID in GetRequiredItemIDsFromLine(line))
                     {
                         bool foundExistingItemID = false;
                         for (int ii = 0; ii < currentQuest.RequiredItemIDs.Count; ii++)
@@ -700,7 +831,7 @@ namespace EQWOWPregenScripts
                     if (line.Contains("text"))
                     {
                         string textVariableName = GetTextVariableNameFromLine(line);
-                        if (foundTextLinesByTextVariableName.ContainsKey(textVariableName) ==  false)
+                        if (foundTextLinesByTextVariableName.ContainsKey(textVariableName) == false)
                             exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "found a text line named " + textVariableName + " but it wasn't defined", i, line));
                         else
                             currentQuest.RequestText = ConvertText(foundTextLinesByTextVariableName[textVariableName]);
@@ -724,7 +855,7 @@ namespace EQWOWPregenScripts
                 }
 
                 // Text Line
-                else if(line.Contains("local text") == true)
+                else if (line.Contains("local text") == true)
                 {
                     // Grab variable name
                     string[] parts = line.Split(" ");
@@ -784,7 +915,9 @@ namespace EQWOWPregenScripts
             }
 
             if (currentQuest != null)
+            {
                 returnQuests.Add(currentQuest);
+            }
             return returnQuests;
         }
 
