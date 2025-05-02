@@ -14,6 +14,11 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+///////////////////////////////////////////////////////////////////////////////
+// TODO LIST
+// - Handle "script_init" files (example: cazicthule\script_init
+///////////////////////////////////////////////////////////////////////////////
+
 using EQWOWPregenScripts;
 using EQWOWPregenScripts.Quests;
 
@@ -23,6 +28,8 @@ List<Quest> quests = new List<Quest>();
 FileProcessor fileProcessor = new FileProcessor();
 string zoneQuestFolderRoot = Path.Combine("E:\\ConverterData\\Quests", "zonequests");
 string[] zoneFolders = Directory.GetDirectories(zoneQuestFolderRoot);
+List<string> filesToSkip = new List<string>() { "Shuttle_I", "Shuttle_II", "Shuttle_III", "Shuttle_IV", "SirensBane", "Stormbreaker", "Golden_Maiden", 
+    "Sea_King", "Suddenly", "pirate_runners_skiff", "Maidens_Voyage", "Muckskimmer", "Captains_Skiff", "Barrel_Barge", "Bloated_Belly", "script_init" };
 foreach (string zoneFolder in zoneFolders)
 {
     // Shortname
@@ -31,7 +38,11 @@ foreach (string zoneFolder in zoneFolders)
     string[] questNPCFiles = Directory.GetFiles(zoneFolder, "*.lua");
     foreach (string questNPCFile in questNPCFiles)
     {
-        fileProcessor.ProcessFile(questNPCFile, ref exceptionLines, ref quests);
+        string npcName = Path.GetFileNameWithoutExtension(questNPCFile);
+        if (filesToSkip.Contains(npcName))
+            continue;
+
+        fileProcessor.ProcessFile(questNPCFile, zoneShortName, ref exceptionLines, ref quests);
     }
 }
 

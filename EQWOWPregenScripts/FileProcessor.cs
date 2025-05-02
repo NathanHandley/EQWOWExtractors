@@ -20,9 +20,72 @@ namespace EQWOWPregenScripts
 {
     internal class FileProcessor
     {
-        public void ProcessFile(string fullFilePath, ref List<ExceptionLine> exceptionLines, ref List<Quest> quests)
+        internal class FunctionBlock
+        {
+            public string functionName = string.Empty;
+            private List<string> blockLines = new List<string>();
+
+            public void LoadStartingAtLine(List<string> inputLines, int startingLineIndex, string npcName, string zoneShortName, ref List<ExceptionLine> exceptionLines,
+                out int readLineCount)
+            {
+                readLineCount = 0;
+                string startLine = inputLines[startingLineIndex].Split("--")[0].Trim();
+                if (startingLineIndex >= inputLines.Count)
+                {
+                    exceptionLines.Add(new ExceptionLine(npcName, zoneShortName, "Invalid startingLineIndex in FunctionBlock Load", startingLineIndex, string.Empty));
+                    return;
+                }
+                if (startLine.StartsWith("function") == false)
+                {
+                    exceptionLines.Add(new ExceptionLine(npcName, zoneShortName, "Line is not a function line", startingLineIndex, inputLines[startingLineIndex]));
+                    return;
+                }
+
+                int scopeSteps = 0;
+                for (int i = startingLineIndex; i < inputLines.Count; i++)
+                {
+                    // Grab the line, removing comments and cap whitespaces
+                    string curLine = inputLines[i].Split("--")[0].Trim();
+                    blockLines.Add(curLine);
+                    readLineCount++;
+
+                    // Function line
+                    if (curLine.StartsWith("function "))
+                    {
+                        functionName = curLine.Split("function ")[1];
+                        scopeSteps++;
+                        continue;
+                    }
+                    else if (curLine.StartsWith("if"))
+                        scopeSteps++;
+                    else if (curLine.StartsWith("while"))
+                        scopeSteps++;
+                    else if (curLine.StartsWith("for"))
+                        scopeSteps++;
+
+                    if (curLine.StartsWith("end "))
+                        scopeSteps--;
+                    else if (curLine.EndsWith("end"))
+                        scopeSteps--;
+
+                    // When all scope is resolved, exit
+                    if (scopeSteps == 0)
+                        return;
+                }
+
+                exceptionLines.Add(new ExceptionLine(npcName, zoneShortName, "Could not find an end line for function", startingLineIndex, inputLines[startingLineIndex]));
+                return;
+            }
+        }
+
+        public void ProcessFile(string fullFilePath, string zoneShortName, ref List<ExceptionLine> exceptionLines, ref List<Quest> quests)
         {
             string npcName = Path.GetFileNameWithoutExtension(fullFilePath);
+
+            if (npcName == "peasant_woman")
+            {
+                int x = 5;
+            }
 
             // Grab the lines of text
             List<string> lines = new List<string>();
@@ -34,6 +97,33 @@ namespace EQWOWPregenScripts
                     if (curLine != null)
                         lines.Add(curLine);
                 }
+            }
+
+            // Process the lines looking for function blocks
+            List<string> variableLines = new List<string>();
+            List<FunctionBlock> functionBlocks = new List<FunctionBlock>();
+            for (int i = 0; i < lines.Count; i++)
+            {
+                // Grab the line, removing comments and cap whitespaces
+                string curLine = lines[i].Split("--")[0].Trim();
+
+                // Skip blank lines
+                if (curLine.Length == 0)
+                    continue; 
+
+                if (curLine.StartsWith("function"))
+                {
+                    FunctionBlock newFunctionBlock = new FunctionBlock();
+                    int readLineCount;
+                    newFunctionBlock.LoadStartingAtLine(lines, i, npcName, zoneShortName, ref exceptionLines, out readLineCount);
+                    if (readLineCount > 0)
+                        i += readLineCount-1;
+                    functionBlocks.Add(newFunctionBlock);
+                }
+                else if (curLine.StartsWith("local "))
+                    variableLines.Add(curLine);
+                else
+                    exceptionLines.Add(new ExceptionLine(npcName, zoneShortName, "ProcessFile unparsed line", i, lines[i]));
             }
         }
     }
