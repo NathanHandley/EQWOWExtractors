@@ -15,6 +15,7 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using EQWOWPregenScripts.Quests;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace EQWOWPregenScripts
 {
@@ -82,12 +83,7 @@ namespace EQWOWPregenScripts
         {
             string npcName = Path.GetFileNameWithoutExtension(fullFilePath);
 
-            if (npcName == "peasant_woman")
-            {
-                int x = 5;
-            }
-
-            // Grab the lines of text
+            // Grab the lines of text, stripping out any comments or blanks
             List<string> lines = new List<string>();
             using (var sr = new StreamReader(fullFilePath))
             {
@@ -95,7 +91,10 @@ namespace EQWOWPregenScripts
                 while ((curLine = sr.ReadLine()) != null)
                 {
                     if (curLine != null)
-                        lines.Add(curLine);
+                    {
+                        string lineToAdd = curLine.Split("--")[0].Trim();
+                        lines.Add(lineToAdd);
+                    }
                 }
             }
 
@@ -104,13 +103,26 @@ namespace EQWOWPregenScripts
             List<FunctionBlock> functionBlocks = new List<FunctionBlock>();
             for (int i = 0; i < lines.Count; i++)
             {
-                // Grab the line, removing comments and cap whitespaces
-                string curLine = lines[i].Split("--")[0].Trim();
+                string curLine = lines[i];
 
                 // Skip blank lines
                 if (curLine.Length == 0)
                     continue; 
 
+                if (curLine.StartsWith("function event_timer(e)") && (npcName == "Lady_Vox" || npcName == "Lord_Nagafen"))
+                {
+                    i += 1;
+                    for (int j = i; j < lines.Count; j++)
+                    {
+                        // Discard the event timers for vox and naggy
+                        if (lines[j].StartsWith("function event_death") == true)
+                        {
+                            i = j-1;
+                            continue;
+                        }
+                    }
+                    continue;
+                }
                 if (curLine.StartsWith("function"))
                 {
                     FunctionBlock newFunctionBlock = new FunctionBlock();
@@ -121,6 +133,18 @@ namespace EQWOWPregenScripts
                     functionBlocks.Add(newFunctionBlock);
                 }
                 else if (curLine.StartsWith("local "))
+                {
+                    string variableLine = curLine;
+                    if (curLine.Contains("{"))
+                    {
+                        int readLineCount;
+                        variableLine = StringHelper.ExtractCurlyBraceContentRaw(lines, i, out readLineCount);
+                        if (readLineCount > 0)
+                            i += readLineCount;
+                    }
+                    variableLines.Add(variableLine);
+                }
+                else if (curLine.StartsWith("count = ") || curLine.StartsWith("QUEST_TEXT = "))
                     variableLines.Add(curLine);
                 else
                     exceptionLines.Add(new ExceptionLine(npcName, zoneShortName, "ProcessFile unparsed line", i, lines[i]));
