@@ -14,6 +14,8 @@
 //  You should have received a copy of the GNU General Public License
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
+using System.Text.RegularExpressions;
+
 namespace EQWOWPregenScripts
 {
     internal class StringHelper
@@ -75,6 +77,286 @@ namespace EQWOWPregenScripts
             // Extract and trim the content between the braces
             string content = inputString.Substring(startIndex + 1, i - startIndex - 2).Trim();
             return content;
+        }
+
+        public static List<(string key, string value)> ParseKeyValuePairs(string content)
+        {
+            List<(string key, string value)> pairs = new List<(string key, string value)>();
+            int braceDepth = 0;
+            int parenthesisDepth = 0;
+            int startIndex = 0;
+            string? currentKey = null;
+
+            for (int i = 0; i < content.Length; i++)
+            {
+                char c = content[i];
+                if (c == '{')
+                    braceDepth++;
+                else if (c == '}')
+                    braceDepth--;
+                else if (c == '(')
+                    parenthesisDepth++;
+                else if (c == ')')
+                    parenthesisDepth--;
+                else if (c == '=' && braceDepth == 0 && parenthesisDepth == 0 && currentKey == null)
+                {
+                    // Found key
+                    currentKey = content.Substring(startIndex, i - startIndex).Trim();
+                    startIndex = i + 1;
+                }
+                else if (c == ',' && braceDepth == 0 && parenthesisDepth == 0 && currentKey != null)
+                {
+                    // Found end of value
+                    string value = content.Substring(startIndex, i - startIndex).Trim();
+                    pairs.Add((currentKey, value));
+                    currentKey = null;
+                    startIndex = i + 1;
+                }
+            }
+
+            // Add the last pair
+            if (currentKey != null && startIndex < content.Length)
+            {
+                string value = content.Substring(startIndex).Trim();
+                pairs.Add((currentKey, value));
+            }
+
+            return pairs;
+        }
+
+        static public List<string> ExtractCurlyBraceParameters(string inputString)
+        {
+            List<string> results = new List<string>();
+
+            // Find all top-level curly brace blocks
+            int i = 0;
+            while (i < inputString.Length)
+            {
+                if (inputString[i] == '{')
+                {
+                    int braceDepth = 1;
+                    int startIndex = i + 1; // Start after '{'
+                    i++;
+
+                    // Find the matching closing brace
+                    while (i < inputString.Length && braceDepth > 0)
+                    {
+                        if (inputString[i] == '{')
+                            braceDepth++;
+                        else if (inputString[i] == '}')
+                            braceDepth--;
+                        i++;
+                    }
+
+                    if (braceDepth == 0 && i <= inputString.Length)
+                    {
+                        // Extract the content inside the braces
+                        string innerContent = inputString.Substring(startIndex, i - startIndex - 1).Trim();
+                        if (!string.IsNullOrEmpty(innerContent))
+                        {
+                            // Step 2: Parse key-value pairs
+                            List<(string key, string value)> keyValuePairs = ParseKeyValuePairs(innerContent);
+
+                            // Step 3: Format results
+                            foreach (var pair in keyValuePairs)
+                            {
+                                results.Add($"{pair.key}, {pair.value}");
+                            }
+                        }
+                    }
+                }
+                else
+                {
+                    i++;
+                }
+            }
+
+            return results;
+        }
+
+        static public bool StringHasTwoFragments(string inputString, string fragment)
+        {
+            if (string.IsNullOrEmpty(inputString) || string.IsNullOrEmpty(fragment))
+                return false;
+
+            int firstIndex = inputString.IndexOf(fragment, StringComparison.OrdinalIgnoreCase);
+            if (firstIndex == -1)
+                return false;
+
+            // Search for the second occurrence after the first
+            int secondIndex = inputString.IndexOf(fragment, firstIndex + fragment.Length, StringComparison.OrdinalIgnoreCase);
+            return secondIndex != -1;
+        }
+
+        static public string ConvertText(string inputTextLine)
+        {
+            string workingText = inputTextLine;
+            workingText = workingText.Replace(".. e.other:GetCleanName() .. \"", "$N");
+            workingText = workingText.Replace(" ..e.other:GetName()..", "$N");
+            workingText = workingText.Replace("..e.other:GetName()..", "$N");
+            workingText = workingText.Replace(" .. e.other:Class() .. ", "$C");
+            workingText = workingText.Replace(" .. e.other:Race() .. ", "$R");
+            workingText = workingText.Replace(";", "");
+            workingText = workingText.Replace("\"", "");
+            workingText = workingText.Replace("[", "");
+            workingText = workingText.Replace("]", "");
+            if (workingText.Contains("e.self:Say(string.format("))
+            {
+                workingText = workingText.Replace("e.self:Say(string.format(", "");
+                if (workingText.Contains(",e.other:GetName()"))
+                {
+                    workingText = workingText.Replace(",e.other:GetName()", "");
+                    workingText = workingText.Replace("%s", "$N");
+                }
+                else if (workingText.Contains(",e.other:Race()"))
+                {
+                    workingText = workingText.Replace(",e.other:Race()", "");
+                    workingText = workingText.Replace("%s", "$R");
+                }
+                else if (workingText.Contains(",e.other:GetCleanName()"))
+                {
+                    workingText = workingText.Replace(",e.other:GetCleanName()", "");
+                    workingText = workingText.Replace("%s", "$N");
+                }
+                else if (workingText.Contains(", e.other:GetCleanName()"))
+                {
+                    workingText = workingText.Replace(", e.other:GetCleanName()", "");
+                    workingText = workingText.Replace("%s", "$N");
+                }
+            }
+            else if (workingText.Contains("e.self:Say('"))
+            {
+                workingText = workingText.Replace("e.self:Say('", "");
+                workingText = workingText.Replace("'", "");
+            }
+            if (workingText.EndsWith(")"))
+                workingText = workingText.Substring(0, workingText.Length - 1);
+            return workingText;
+        }
+
+        static public List<string> ExtractMethodParameters(string inputLine, string methodName)
+        {
+            // Find the method call
+            string escapedMethodName = Regex.Escape(methodName);
+            string pattern = $@"{escapedMethodName}\(";
+            Match methodMatch = Regex.Match(inputLine, pattern);
+            if (!methodMatch.Success)
+                return new List<string>();
+
+            // Parse the parameters up to the matching closing parenthesis
+            int startIndex = methodMatch.Index + methodMatch.Length;
+            int parenthesisDepth = 1;
+            int i = startIndex;
+
+            // Find the end of the parameter list
+            while (i < inputLine.Length && parenthesisDepth > 0)
+            {
+                char c = inputLine[i];
+                if (c == '(')
+                    parenthesisDepth++;
+                else if (c == ')')
+                    parenthesisDepth--;
+                i++;
+            }
+
+            // Unmatched parenthesis
+            if (parenthesisDepth != 0)
+                return new List<string>();
+
+            // Extract the parameter string
+            string parameters = inputLine.Substring(startIndex, i - startIndex - 1).Trim();
+
+            // plit parameters, respecting nested parentheses
+            List<string> paramList = new List<string>();
+            parenthesisDepth = 0;
+            int paramStart = 0;
+
+            for (int j = 0; j < parameters.Length; j++)
+            {
+                char c = parameters[j];
+
+                if (c == '(')
+                    parenthesisDepth++;
+                else if (c == ')')
+                    parenthesisDepth--;
+                else if (c == ',' && parenthesisDepth == 0)
+                {
+                    // Found a parameter separator at the top level
+                    string param = parameters.Substring(paramStart, j - paramStart).Trim();
+                    if (!string.IsNullOrEmpty(param))
+                        paramList.Add(param);
+                    paramStart = j + 1;
+                }
+            }
+
+            // Add the last parameter
+            if (paramStart < parameters.Length)
+            {
+                string param = parameters.Substring(paramStart).Trim();
+                if (!string.IsNullOrEmpty(param))
+                    paramList.Add(param);
+            }
+
+            return paramList;
+        }
+
+        static public int GetSingleRangedIntFromString(string inputString, string zoneShortName, string questgiverName, ref List<ExceptionLine> exceptionLines)
+        {
+            // Try to just pull it first
+            int parsedValue;
+            bool isValid = int.TryParse(inputString, out parsedValue);
+            if (isValid)
+                return parsedValue;
+
+            // Try to identify the format
+            if (inputString.Contains("math.random"))
+            {
+                List<string> parameters = ExtractMethodParameters(inputString, "random");
+                if (parameters.Count == 0)
+                {
+                    exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Int in string had a random method, but no parameters could be found", 0, inputString));
+                    return 0;
+                }
+
+                int parameter1Value = int.Parse(parameters[0]);
+                if (parameters.Count == 1)
+                {
+                    // Use the midpoint between number and zero
+                    if (parameter1Value == 0)
+                        return 0;
+                    else
+                        return parameter1Value / 2;
+                }
+                else if (parameters.Count == 2)
+                {
+                    // Use a midpoint between the two numbers
+                    int parameter2Value = int.Parse(parameters[1]);
+                    if (parameter2Value == 0)
+                        return 0;
+                    else
+                        return parameter1Value + (parameter2Value - parameter1Value) / 2;
+                }
+                else
+                {
+                    exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Int in string had a random method, but there were more than 2 parameters found", 0, inputString));
+                    return 0;
+                }
+            }
+
+            return 0;
+        }
+
+        static public string GetTextVariableNameFromLine(string line)
+        {
+            string[] lineBlocks = line.Replace("then", "").Trim().Split(",");
+            for (int i = 0; i < lineBlocks.Length; i++)
+            {
+                if (lineBlocks[i].Contains("text"))
+                {
+                    return lineBlocks[i].Replace(")", "").Trim();
+                }
+            }
+            return string.Empty;
         }
     }
 }

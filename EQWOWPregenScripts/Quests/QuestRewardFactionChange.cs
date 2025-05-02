@@ -26,5 +26,34 @@ namespace EQWOWPregenScripts.Quests
             FactionId = factionId;
             ChangeAmount = changeAmount;
         }
+
+        static public QuestRewardFactionChange? GetFactionChangeFromLine(string line, string zoneShortName, string questgiverName, ref List<ExceptionLine> exceptionLines)
+        {
+            QuestRewardFactionChange? factionChange = null;
+            // Hard-coded
+            if (zoneShortName == "innothule" && questgiverName == "Lynuga")
+                return null;
+
+            // Strip comments
+            string workingLine = line.Split("--")[0];
+
+            // TODO: Handle these conditions
+            if (workingLine.Contains(" or"))
+                return null;
+            if (workingLine.Contains("random"))
+                return null;
+            if (workingLine.Contains("ChooseRandom"))
+                return null;
+
+            // Clean out the line and pull the values
+            workingLine = workingLine.Replace("e.other:Faction(e.self,", "");
+            workingLine = workingLine.Replace(";", "");
+            string[] blocks = workingLine.Split(",");
+            int factionID = int.Parse(blocks[0]);
+            int changeAmt = int.Parse(blocks[1].Replace(")", ""));
+            factionChange = new QuestRewardFactionChange(factionID, changeAmt);
+
+            return factionChange;
+        }
     }
 }

@@ -81,7 +81,11 @@ namespace EQWOWPregenScripts
             // Process the lines looking for function blocks and variables
             List<string> variableLines;
             List<FunctionBlock> functionBlocks;
-            ExtractFunctionsAndVariables(npcName, zoneShortName, lines, ref exceptionLines, out variableLines, out functionBlocks);            
+            ExtractFunctionsAndVariables(npcName, zoneShortName, lines, ref exceptionLines, out variableLines, out functionBlocks);
+
+            // Extract quests out of the function blocks
+            foreach (FunctionBlock functionBlock in functionBlocks)
+                quests.AddRange(functionBlock.ExtractQuests(ref exceptionLines));                
         }
     }
 }

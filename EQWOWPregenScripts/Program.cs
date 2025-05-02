@@ -45,6 +45,8 @@ foreach (string zoneFolder in zoneFolders)
         fileProcessor.ProcessFile(questNPCFile, zoneShortName, ref exceptionLines, ref quests);
     }
 }
+Quest.OutputQuests(quests);
+ExceptionLine.OutputExceptionLines(exceptionLines);
 
 Console.WriteLine("Done. Press any key...");
 Console.ReadKey();
