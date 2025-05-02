@@ -85,7 +85,8 @@ namespace EQWOWPregenScripts
 
             // Extract quests out of the function blocks
             foreach (FunctionBlock functionBlock in functionBlocks)
-                quests.AddRange(functionBlock.ExtractQuests(ref exceptionLines));                
+                if (functionBlock.HasPossibleQuestData() == true)
+                    quests.AddRange(functionBlock.ExtractQuests(ref exceptionLines));                
         }
     }
 }

@@ -55,7 +55,7 @@ namespace EQWOWPregenScripts.Quests
                 outputHeaderSB.Append("|");
             }
             outputHeaderSB.Append("reward_money|reward_exp|");
-            for (int i = 1; i <= 20; i++)
+            for (int i = 1; i <= 38; i++)
             {
                 outputHeaderSB.Append("reward_item_ID");
                 outputHeaderSB.Append(i);
@@ -109,7 +109,7 @@ namespace EQWOWPregenScripts.Quests
                 outputLineSB.Append("|");
                 outputLineSB.Append(quest.Reward.Experience);
                 outputLineSB.Append("|");
-                for (int i = 0; i < 20; i++)
+                for (int i = 0; i < 38; i++)
                 {
                     if (quest.Reward.ItemRewards.Count > i)
                     {

@@ -179,15 +179,40 @@ namespace EQWOWPregenScripts.Quests
                 // ItemID
                 if (parameters.Count > 5)
                 {
-                    int itemID;
-                    bool parseSuccess = int.TryParse(parameters[5], out itemID);
-                    if (parseSuccess == false)
+                    if (parameters[5].Contains("ChooseRandom"))
                     {
-                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Unable to determine the ItemID from the string " + parameters[5], 0, line));
-                        return null;
+                        List<string> itemIDStrings = StringHelper.ExtractMethodParameters(parameters[5], "ChooseRandom");
+                        if (itemIDStrings.Count == 0)
+                        {
+                            exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Item reward had ChooseRandom, but no IDs were extracted: " + parameters[5], 0, line));
+                            return null;
+                        }
+                        float itemChance = 100 / itemIDStrings.Count;
+                        foreach (string itemIDString in itemIDStrings)
+                        {
+                            int itemID;
+                            bool parseSuccess = int.TryParse(itemIDString, out itemID);
+                            if (parseSuccess == false)
+                            {
+                                exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Unable to determine the ItemID from the string " + itemIDString, 0, line));
+                                return null;
+                            }
+                            if (itemID != 0)
+                                returnReward.AddItemReward(itemID, 1, itemChance);
+                        }
                     }
-                    if (itemID != 0)
-                        returnReward.AddItemReward(itemID);
+                    else
+                    {
+                        int itemID;
+                        bool parseSuccess = int.TryParse(parameters[5], out itemID);
+                        if (parseSuccess == false)
+                        {
+                            exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Unable to determine the ItemID from the string " + parameters[5], 0, line));
+                            return null;
+                        }
+                        if (itemID != 0)
+                            returnReward.AddItemReward(itemID);
+                    }   
                 }
 
                 // Experience

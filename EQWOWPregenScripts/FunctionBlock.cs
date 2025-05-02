@@ -116,6 +116,21 @@ namespace EQWOWPregenScripts
             return requiredItemIDs;
         }
 
+        public bool HasPossibleQuestData()
+        {
+            foreach (string line in BlockLines)
+            {
+                if (line.Contains("check_turn_in"))
+                    return true;
+                if (line.Contains("SummonCursorItem"))
+                    return true;
+                if (line.Contains("QuestReward"))
+                    return true;
+            }
+
+            return false;
+        }
+
         public List<Quest> ExtractQuests(ref List<ExceptionLine> exceptionLines)
         {
             if (NpcName == string.Empty)
