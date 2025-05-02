@@ -17,6 +17,43 @@
 ///////////////////////////////////////////////////////////////////////////////
 // TODO LIST
 // - Handle "script_init" files (example: cazicthule\script_init
+// Timer Events
+//  - airplane\#Master_of_Elements
+//      - function event_timer(e)
+// Spawn Events
+//  - airplane\#Master_of_elements
+//      - function event_spawn(e)
+//      - eq.depop()
+//  - airplane\Magnus_Frinon
+//      - eq.spawn2
+//  - airplane\a_thunder_spirit_princess
+//      - eq.unique_spawn(71073,0,0,287.9,662.5,-54.1,109.3); -- NPC: Gkzzallk
+// Subconditionals for rewards
+//  - akanon\Manik_Compolten
+//      - if(math.random(100) < 20) then
+// elseif on check_turn_in
+//  - airplane\Inte_Akera
+// Say events that summon items
+//  - airplane\Cilin_Spellsinger
+//      - e.other:SummonCursorItem(18542); -- The Flute
+// Combat events (event_combat(e)
+//  - airplane\Sirran_the_lunatic
+// Hail
+//  - cabeast\Hierophant_Oxyn
+//      - if(e.message:findi("hail")) then
+// Money as a requirement
+//  - airplane\a_thunder_spirit_princess
+//      - if(item_lib.check_turn_in(e.self, e.trade, {gold = 10})) then
+// Death Events
+//  - airplane\a_thunder_spirit_princess
+//      - function event_death_complete(e)
+// Rewards to cursor
+//  - global\Priest_of_Discord
+//      - e.other:SummonCursorItem(18700); -- Item: Tome of Order and Discord
+// Text Parse Bug (no ' at the end)
+// - eastkarana, Tanal_Redblade
+//  - Very good, you have wreaked havoc on your foes in the ancient land of the giants. Rallos Zek must have guided your blade. (Tenal's voice is suddenly silenced and you feel as if your body is frozen. From Tenal's lips issues a voice that is not his own.) 'Bring this mortal the scales of the children of Veeshan. The red and green as well as my war totem. I will guide your blade.' Your movement returns as Tenal falls to the ground, gasping for breath.
+
 ///////////////////////////////////////////////////////////////////////////////
 
 using EQWOWPregenScripts;

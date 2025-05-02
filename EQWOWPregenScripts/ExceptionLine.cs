@@ -20,7 +20,7 @@ namespace EQWOWPregenScripts
 {
     public class ExceptionLine
     {
-        static private string OutputExceptionLinesFile = "E:\\ConverterData\\Quests\\ExceptionsNew.csv";
+        static private string OutputExceptionLinesFile = "E:\\ConverterData\\Quests\\Exceptions.csv";
 
         public ExceptionLine(string questgiverName, string zoneShortName, string exceptionReason, int lineRow, string lineText)
         {

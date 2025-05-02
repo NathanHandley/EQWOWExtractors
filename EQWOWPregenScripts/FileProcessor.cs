@@ -54,6 +54,8 @@ namespace EQWOWPregenScripts
                 }
                 else if (curLine.StartsWith("count = ") || curLine.StartsWith("QUEST_TEXT = "))
                     variableLines.Add(curLine);
+                else if (curLine == "end" || curLine.Contains("item_lib.return_items"))
+                    continue;
                 else
                     exceptionLines.Add(new ExceptionLine(npcName, zoneShortName, "ProcessFile unparsed line", i, lines[i]));
             }

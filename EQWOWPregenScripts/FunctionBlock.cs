@@ -49,6 +49,9 @@ namespace EQWOWPregenScripts
             {
                 // Grab the line, removing comments and cap whitespaces
                 string curLine = inputLines[i].Split("--")[0].Trim();
+                if (curLine.Length == 0)
+                    continue;
+
                 BlockLines.Add(curLine);
                 readLineCount++;
 
@@ -122,10 +125,10 @@ namespace EQWOWPregenScripts
             {
                 if (line.Contains("check_turn_in"))
                     return true;
-                if (line.Contains("SummonCursorItem"))
-                    return true;
-                if (line.Contains("QuestReward"))
-                    return true;
+                //if (line.Contains("SummonCursorItem"))
+                //    return true;
+                //if (line.Contains("QuestReward"))
+                //    return true;
             }
 
             return false;
@@ -136,191 +139,198 @@ namespace EQWOWPregenScripts
             if (NpcName == string.Empty)
                 throw new Exception("Not loaded");
 
+            // Pull out the quest blocks to work with and process them
+            List<FunctionBlock> questBlocks = GetFunctionBlocksForQuests(ref exceptionLines);
             List<Quest> extractedQuests = new List<Quest>();
-            Quest? currentQuest = null;
-            Dictionary<string, string> foundTextLinesByTextVariableName = new Dictionary<string, string>();
-            for (int i = 0; i < BlockLines.Count; i++)
+            for (int qi = 0; qi < questBlocks.Count; qi++)
             {
-                string line = BlockLines[i]; // Dump the comments
-
-                // If requirements are found, then this starts a new quest
-                if (line.Contains("check_turn_in"))
+                FunctionBlock curQuestBlock = questBlocks[qi];
+                Quest? currentQuest = new Quest(ZoneShortName, NpcName);
+                for (int i = 0; i < curQuestBlock.BlockLines.Count; i++)
                 {
-                    // If rewards haven't been found but an open quest was started, then reset the block.  Probably just a text response.
-                    if (currentQuest != null)
-                    {
-                        exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "check_turn_in found before finishing rewards on prior possible quest", i, line));
-                        currentQuest = null;
-                        continue;
-                    }
+                    string line = curQuestBlock.BlockLines[i];
 
-                    // Look for expansion limits
-                    int minimumExpansion = -1;
-                    if (line.Contains("eq.is_the_scars_of_velious_enabled() and "))
+                    // Quest requirements
+                    if (line.Contains("check_turn_in"))
                     {
-                        minimumExpansion = 2;
-                        line = line.Replace("eq.is_the_scars_of_velious_enabled() and ", "");
-                    }
-
-                    // Multi-part conditionals should be skipped and done manually
-                    if (line.Contains(" or "))
-                    {
-                        exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "check_turn_in has 'or' conditional", i, line));
-                        continue;
-                    }
-                    if (line.Contains("not"))
-                    {
-                        exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "check_turn_in has 'not'", i, line));
-                        continue;
-                    }
-                    if (StringHelper.StringHasTwoFragments(line, " and "))
-                    {
-                        exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "check_turn_in has two 'and'", i, line));
-                        continue;
-                    }
-
-                    // Start a new quest then
-                    currentQuest = new Quest(ZoneShortName, NpcName);
-                    currentQuest.MinimumExpansion = minimumExpansion;
-
-                    // Required Items
-                    List<int> requiredItems = new List<int>();
-                    foreach (int requiredItemID in GetRequiredItemIDsFromLine(line))
-                    {
-                        bool foundExistingItemID = false;
-                        for (int ii = 0; ii < currentQuest.RequiredItemIDs.Count; ii++)
+                        // Multi-part conditionals should be skipped and done manually
+                        if (line.Contains(" or "))
                         {
-                            if (currentQuest.RequiredItemIDs[ii] == requiredItemID)
+                            exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "check_turn_in has 'or' conditional", i, line));
+                            currentQuest = null;
+                            break;
+                        }
+                        if (line.Contains("not"))
+                        {
+                            exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "check_turn_in has 'not'", i, line));
+                            currentQuest = null;
+                            break;
+                        }
+                        if (StringHelper.StringHasTwoFragments(line, " and "))
+                        {
+                            exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "check_turn_in has two 'and'", i, line));
+                            currentQuest = null;
+                            break;
+                        }
+
+                        // Look for expansion limits
+                        int minimumExpansion = -1;
+                        if (line.Contains("eq.is_the_scars_of_velious_enabled() and "))
+                        {
+                            minimumExpansion = 2;
+                            line = line.Replace("eq.is_the_scars_of_velious_enabled() and ", "");
+                        }
+                        currentQuest.MinimumExpansion = minimumExpansion;
+
+                        // Required Items
+                        List<int> requiredItems = new List<int>();
+                        foreach (int requiredItemID in GetRequiredItemIDsFromLine(line))
+                        {
+                            bool foundExistingItemID = false;
+                            for (int ii = 0; ii < currentQuest.RequiredItemIDs.Count; ii++)
                             {
-                                currentQuest.RequiredItemCounts[ii]++;
-                                foundExistingItemID = true;
-                                break;
+                                if (currentQuest.RequiredItemIDs[ii] == requiredItemID)
+                                {
+                                    currentQuest.RequiredItemCounts[ii]++;
+                                    foundExistingItemID = true;
+                                    break;
+                                }
+                            }
+                            if (foundExistingItemID == false)
+                            {
+                                currentQuest.RequiredItemIDs.Add(requiredItemID);
+                                currentQuest.RequiredItemCounts.Add(1);
                             }
                         }
-                        if (foundExistingItemID == false)
+
+                        // Required Faction
+                        if (line.Contains("Faction"))
                         {
-                            currentQuest.RequiredItemIDs.Add(requiredItemID);
-                            currentQuest.RequiredItemCounts.Add(1);
+                            // Faction is always first, it seems
+                            string workingLine = line.Trim().Replace("if", "").TrimStart();
+                            workingLine = workingLine.Trim().Replace("else", "").TrimStart();
+                            string[] blocks = workingLine.Split(" ");
+
+                            // Faction level
+                            if (workingLine.Contains("GetFaction("))
+                            {
+                                int minFactionLevel = int.Parse(blocks[2].Replace(")", ""));
+                                if (blocks[1] == "<")
+                                    minFactionLevel--;
+                                currentQuest.MinimumFaction = GetFactionValueFromFactionLevel(minFactionLevel);
+                            }
+
+                            // Faction value
+                            else
+                            {
+                                int minFactionValue = int.Parse(blocks[2].Replace(")", ""));
+                            }
+                        }
+
+                        // Text line
+                        if (line.Contains("text"))
+                        {
+                            exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "Found a text line but it wasn't handled", i, line));
+                            currentQuest = null;
+                            break;
+                            //string textVariableName = StringHelper.GetTextVariableNameFromLine(line);
+                            //if (foundTextLinesByTextVariableName.ContainsKey(textVariableName) == false)
+                            //    exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "found a text line named " + textVariableName + " but it wasn't defined", i, line));
+                            //else
+                            //    currentQuest.RequestText = StringHelper.ConvertText(foundTextLinesByTextVariableName[textVariableName]);
                         }
                     }
 
-                    // Required Faction
-                    if (line.Contains("Faction"))
+                    // Summoned quest item
+                    else if (line.Contains("SummonCursorItem"))
                     {
-                        // Faction is always first, it seems
-                        string workingLine = line.Trim().Replace("if", "").TrimStart();
-                        workingLine = workingLine.Trim().Replace("else", "").TrimStart();
-                        string[] blocks = workingLine.Split(" ");
+                        List<string> parameters = StringHelper.ExtractMethodParameters(line, "SummonCursorItem");
+                        if (parameters.Count > 1)
+                            throw new Exception("beep");
+                        currentQuest.Reward.AddItemReward(StringHelper.GetSingleRangedIntFromString(parameters[0], ZoneShortName, NpcName, ref exceptionLines));
+                    }
 
-                        // Faction level
-                        if (workingLine.Contains("GetFaction("))
+                    // Faction adjustment
+                    else if (line.Contains("e.other:Faction(e.self"))
+                    {
+                        QuestRewardFactionChange? factionChange = QuestRewardFactionChange.GetFactionChangeFromLine(line, ZoneShortName, NpcName, ref exceptionLines);
+                        if (factionChange == null)
                         {
-                            int minFactionLevel = int.Parse(blocks[2].Replace(")", ""));
-                            if (blocks[1] == "<")
-                                minFactionLevel--;
-                            currentQuest.MinimumFaction = GetFactionValueFromFactionLevel(minFactionLevel);
+                            exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "Faction add line found, but could not parse", i, line));
+                            continue;
                         }
+                        currentQuest.Reward.FactionChanges.Add(factionChange);
+                    }
 
-                        // Faction value
-                        else
+                    // Reward
+                    else if (line.Contains("QuestReward") == true)
+                    {
+                        QuestReward? questReward = QuestReward.GetQuestRewardFromLine(line, ZoneShortName, NpcName, ref exceptionLines);
+                        if (questReward == null)
                         {
-                            int minFactionValue = int.Parse(blocks[2].Replace(")", ""));
+                            exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "Rewards line found, but could not parse", i, line));
+                            continue;
                         }
+                        currentQuest.Reward.ItemRewards = questReward.ItemRewards;
+                        currentQuest.Reward.Money = questReward.Money;
+                        currentQuest.Reward.Experience = questReward.Experience;
                     }
 
-                    // Text line
-                    if (line.Contains("text"))
+                    // Everything else is an unhandled reaction
+                    else if (currentQuest != null)
                     {
-                        string textVariableName = StringHelper.GetTextVariableNameFromLine(line);
-                        if (foundTextLinesByTextVariableName.ContainsKey(textVariableName) == false)
-                            exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "found a text line named " + textVariableName + " but it wasn't defined", i, line));
-                        else
-                            currentQuest.RequestText = StringHelper.ConvertText(foundTextLinesByTextVariableName[textVariableName]);
+                        currentQuest.ResponseReactionsRaw.Add(line);
                     }
                 }
-
-                // Say line
-                else if (line.Contains("e.self:Say"))
+                if (currentQuest != null)
                 {
-                    if (currentQuest == null)
-                    {
-                        exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "Say line found but quest was null", i, line));
-                        continue;
-                    }
-
-                    string formattedLine = StringHelper.ConvertText(line.Replace("e.self:Say(\"", ""));
-                    if (currentQuest.RewardText.Length == 0)
-                        currentQuest.RewardText = formattedLine;
-                    else
-                        currentQuest.RewardText = string.Concat(currentQuest.RequestText, "$B$B", formattedLine);
-                }
-
-                // Text Line
-                else if (line.Contains("local text") == true)
-                {
-                    // Grab variable name
-                    string[] parts = line.Split(" ");
-                    string variableName = parts[1];
-                    string value = line.Substring(line.IndexOf('"'));
-                    if (foundTextLinesByTextVariableName.ContainsKey(variableName))
-                        exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "Found a second text variable named " + variableName + " while parsing a quest", i, line));
-                    else
-                        foundTextLinesByTextVariableName.Add(variableName, value);
-                }
-
-                else if (line.Contains("SummonCursorItem"))
-                {
-                    exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "SummonCursorItem found but unhandled", i, line));
-                }
-
-                // Add Faction
-                else if (line.Contains("e.other:Faction(e.self"))
-                {
-                    if (currentQuest == null)
-                    {
-                        exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "Faction add found but there was no check_turn_in proceeding it", i, line));
-                        continue;
-                    }
-
-                    QuestRewardFactionChange? factionChange = QuestRewardFactionChange.GetFactionChangeFromLine(line, ZoneShortName, NpcName, ref exceptionLines);
-                    if (factionChange == null)
-                    {
-                        exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "Faction add line found, but could not parse", i, line));
-                        continue;
-                    }
-                    currentQuest.Reward.FactionChanges.Add(factionChange);
-                }
-
-                // Reward
-                else if (line.Contains("QuestReward") == true)
-                {
-                    if (currentQuest == null)
-                    {
-                        exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "QuestReward found but there was no check_turn_in proceeding it", i, line));
-                        continue;
-                    }
-
-                    QuestReward? questReward = QuestReward.GetQuestRewardFromLine(line, ZoneShortName, NpcName, ref exceptionLines);
-                    if (questReward == null)
-                    {
-                        exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "Rewards line found, but could not parse", i, line));
-                        currentQuest = null;
-                        continue;
-                    }
-                    currentQuest.Reward.ItemRewards = questReward.ItemRewards;
-                    currentQuest.Reward.Money = questReward.Money;
-                    currentQuest.Reward.Experience = questReward.Experience;
+                    currentQuest.CalculateQuestID();
                     extractedQuests.Add(currentQuest);
-                    currentQuest = null;
                 }
             }
-
-            if (currentQuest != null)
-            {
-                extractedQuests.Add(currentQuest);
-            }
-
             return extractedQuests;
+        }
+
+        public List<FunctionBlock> GetFunctionBlocksForQuests(ref List<ExceptionLine> exceptionLines)
+        {
+            List<FunctionBlock> questFunctionBlocks = new List<FunctionBlock>();
+            FunctionBlock? curFunctionBlock = null;
+            if (FunctionName.Contains("event_trade"))
+            {
+                for (int i = 0; i < BlockLines.Count-1; i++)
+                {
+                    string curLine = BlockLines[i];
+
+                    // This ends a block
+                    if (curLine.StartsWith("elseif") || curLine.StartsWith("end"))
+                    {
+                        if (curFunctionBlock == null)
+                            exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "Found what should be the end of a quest, but no quest was started", i, curLine));
+                        else
+                            questFunctionBlocks.Add(curFunctionBlock);
+                        curFunctionBlock = null;
+                    }
+
+                    // New quest block
+                    if (curLine.Contains("check_turn_in"))
+                    {
+                        if (curFunctionBlock != null)
+                            exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "check_turn_in found before finishing prior quest", i, curLine));
+                        curFunctionBlock = new FunctionBlock();
+                    }
+
+                    // Skip conditionals
+                    else if (curFunctionBlock != null && curLine.Contains("if("))
+                    {
+                        exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "Conditional found in quest block, so nullifying it to make manually", i, curLine));
+                        curFunctionBlock = null;
+                    }
+
+                    if (curFunctionBlock != null)
+                        curFunctionBlock.BlockLines.Add(curLine);
+                }
+            }
+            return questFunctionBlocks;
         }
     }
 }

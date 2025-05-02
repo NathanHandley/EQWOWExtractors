@@ -20,8 +20,10 @@ namespace EQWOWPregenScripts.Quests
 {
     public class Quest
     {
-        static private string OutputQuestFile = "E:\\ConverterData\\Quests\\QuestTemplatesNew.csv";
+        static private string OutputQuestFile = "E:\\ConverterData\\Quests\\QuestTemplates.csv";
+        static private string OutputQuestReactionsFile = "E:\\ConverterData\\Quests\\QuestReactions.csv";
 
+        public int WOWQuestID;
         public string Name = string.Empty;
         public string ZoneShortName = string.Empty;
         public string QuestgiverName = string.Empty;
@@ -34,6 +36,9 @@ namespace EQWOWPregenScripts.Quests
         public string RequestText = string.Empty;
         public string RewardText = string.Empty;
         public string RewardEmote = string.Empty;
+        public List<string> ResponseReactionsRaw = new List<string>();
+
+        private static int curQuestIter = 0;
 
         public Quest(string zoneShortName, string questGiverName)
         {
@@ -41,7 +46,45 @@ namespace EQWOWPregenScripts.Quests
             QuestgiverName = questGiverName;
         }
 
+        public void CalculateQuestID()
+        {
+            WOWQuestID = 30000 + curQuestIter;
+            curQuestIter++;
+        }
+
         static public void OutputQuests(List<Quest> quests)
+        {
+            OutputQuestTemplates(quests);
+            OutputQuestReactions(quests);
+        }
+
+        static private void OutputQuestReactions(List<Quest> quests)
+        {
+            List<string> outputQuestReactionLines = new List<string>();
+            outputQuestReactionLines.Add("wow_questid|zone_shortname|questgiver_name|reaction");
+            foreach (Quest quest in quests)
+            {
+                foreach (string responseReaction in quest.ResponseReactionsRaw)
+                {
+                    StringBuilder outputSB = new StringBuilder();
+                    outputSB.Append(quest.WOWQuestID);
+                    outputSB.Append("|");
+                    outputSB.Append(quest.ZoneShortName);
+                    outputSB.Append("|");
+                    outputSB.Append(quest.QuestgiverName);
+                    outputSB.Append("|"); 
+                    outputSB.Append(responseReaction);
+                    outputQuestReactionLines.Add(outputSB.ToString());
+                }
+            }
+            if (File.Exists(OutputQuestReactionsFile))
+                File.Delete(OutputQuestReactionsFile);
+            using (var outputFile = new StreamWriter(OutputQuestReactionsFile))
+                foreach (string outputLine in outputQuestReactionLines)
+                    outputFile.WriteLine(outputLine);
+        }
+
+        static private void OutputQuestTemplates(List<Quest> quests)
         {
             StringBuilder outputHeaderSB = new StringBuilder();
             outputHeaderSB.Append("wow_questid|zone_shortname|questgiver_name|quest_name|req_repmin|");
@@ -75,11 +118,10 @@ namespace EQWOWPregenScripts.Quests
             for (int qi = 0; qi < quests.Count; qi++)
             {
                 Quest quest = quests[qi];
-                int questID = 30000 + qi;
 
                 // Output the found quest
                 StringBuilder outputLineSB = new StringBuilder();
-                outputLineSB.Append(questID);
+                outputLineSB.Append(quest.WOWQuestID);
                 outputLineSB.Append("|");
                 outputLineSB.Append(quest.ZoneShortName);
                 outputLineSB.Append("|");
