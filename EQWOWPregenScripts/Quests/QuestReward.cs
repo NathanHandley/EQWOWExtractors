@@ -82,15 +82,40 @@ namespace EQWOWPregenScripts.Quests
                     {
                         case "itemid":
                             {
-                                int itemID;
-                                bool parseSuccess = int.TryParse(blocks[1], out itemID);
-                                if (parseSuccess == false)
+                                if (blocks[1].Contains("ChooseRandom"))
                                 {
-                                    exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Could not parse itemid out of the line", 0, line));
-                                    return null;
+                                    List<string> itemIDStrings = StringHelper.ExtractMethodParameters(blocks[1], "ChooseRandom");
+                                    if (itemIDStrings.Count == 0)
+                                    {
+                                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Item reward had ChooseRandom, but no IDs were extracted: " + blocks[1], 0, line));
+                                        return null;
+                                    }
+                                    float itemChance = 100 / itemIDStrings.Count;
+                                    foreach (string itemIDString in itemIDStrings)
+                                    {
+                                        int itemID;
+                                        bool parseSuccess = int.TryParse(itemIDString, out itemID);
+                                        if (parseSuccess == false)
+                                        {
+                                            exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Unable to determine the ItemID from the string " + itemIDString, 0, line));
+                                            return null;
+                                        }
+                                        if (itemID != 0)
+                                            returnReward.AddItemReward(itemID, 1, itemChance);
+                                    }
                                 }
                                 else
-                                    returnReward.AddItemReward(itemID);
+                                {
+                                    int itemID;
+                                    bool parseSuccess = int.TryParse(blocks[1], out itemID);
+                                    if (parseSuccess == false)
+                                    {
+                                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Unable to determine the ItemID from the string " + blocks[1], 0, line));
+                                        return null;
+                                    }
+                                    if (itemID != 0)
+                                        returnReward.AddItemReward(itemID);
+                                }
                             }
                             break;
                         case "items":
