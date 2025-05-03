@@ -53,7 +53,9 @@ namespace EQWOWPregenScripts
                     variableLines.Add(variableLine);
                 }
                 else if (curLine.StartsWith("count = ") || curLine.StartsWith("QUEST_TEXT = "))
+                {
                     variableLines.Add(curLine);
+                }
                 else if (curLine == "end" || curLine.Contains("item_lib.return_items"))
                     continue;
                 else
@@ -88,7 +90,7 @@ namespace EQWOWPregenScripts
             // Extract quests out of the function blocks
             foreach (FunctionBlock functionBlock in functionBlocks)
                 if (functionBlock.HasPossibleQuestData() == true)
-                    quests.AddRange(functionBlock.ExtractQuests(ref exceptionLines));                
+                    quests.AddRange(functionBlock.ExtractQuests(ref exceptionLines, variableLines));                
         }
     }
 }

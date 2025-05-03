@@ -20,14 +20,6 @@
 // Timer Events
 //  - airplane\#Master_of_Elements
 //      - function event_timer(e)
-// Spawn Events
-//  - airplane\#Master_of_elements
-//      - function event_spawn(e)
-//      - eq.depop()
-//  - airplane\Magnus_Frinon
-//      - eq.spawn2
-//  - airplane\a_thunder_spirit_princess
-//      - eq.unique_spawn(71073,0,0,287.9,662.5,-54.1,109.3); -- NPC: Gkzzallk
 // Subconditionals for rewards
 //  - akanon\Manik_Compolten
 //      - if(math.random(100) < 20) then

@@ -23,6 +23,7 @@ namespace EQWOWPregenScripts
         private string NpcName = string.Empty;
         private string ZoneShortName = string.Empty;
         public string FunctionName = string.Empty;
+        public Dictionary<string, string> LocalVariableValuesByName = new Dictionary<string, string>();
         public List<string> BlockLines = new List<string>();
 
         public void LoadStartingAtLine(List<string> inputLines, int startingLineIndex, string npcName, string zoneShortName, ref List<ExceptionLine> exceptionLines,
@@ -73,6 +74,23 @@ namespace EQWOWPregenScripts
                     scopeSteps--;
                 else if (curLine.EndsWith("end"))
                     scopeSteps--;
+
+                if (curLine.StartsWith("local "))
+                {
+                    string variableLine = curLine;
+                    if (curLine.Contains("{"))
+                        variableLine = StringHelper.ExtractCurlyBraceContentRaw(inputLines, i, out readLineCount);
+                    (string key, string value) variable = StringHelper.GetLocalbleDataFromLine(variableLine);
+                    if (variable.key.Length > 0)
+                    {
+                        if (LocalVariableValuesByName.ContainsKey(variable.key) == true)
+                        {
+                            exceptionLines.Add(new ExceptionLine(npcName, zoneShortName, "Local variable with name " + variable.key + "already found", i, curLine));
+                        }
+                        else
+                            LocalVariableValuesByName.Add(variable.key, variable.value);
+                    }
+                }
 
                 // When all scope is resolved, exit
                 if (scopeSteps == 0)
@@ -134,7 +152,7 @@ namespace EQWOWPregenScripts
             return false;
         }
 
-        public List<Quest> ExtractQuests(ref List<ExceptionLine> exceptionLines)
+        public List<Quest> ExtractQuests(ref List<ExceptionLine> exceptionLines, List<string> variableLines)
         {
             if (NpcName == string.Empty)
                 throw new Exception("Not loaded");
@@ -173,6 +191,27 @@ namespace EQWOWPregenScripts
                             break;
                         }
 
+                        // Get the parameters out of the turn-in method, and the first two should be ignored
+                        List<string> turnInParameters = StringHelper.ExtractMethodParameters(line, "check_turn_in");
+                        if (turnInParameters.Count < 3)
+                        {
+                            exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "check_turn_in has two or less parameters", i, line));
+                            currentQuest = null;
+                            break;
+                        }
+
+                        // Required Items
+                        string requiredItems = turnInParameters[2];
+
+
+
+
+                        if (line.Contains("{"))
+                        {
+                            List<string> pairs = StringHelper.ExtractCurlyBraceParameters(line);
+                            exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "check_turn_in {", i, line));
+                        }
+
                         // Look for expansion limits
                         int minimumExpansion = -1;
                         if (line.Contains("eq.is_the_scars_of_velious_enabled() and "))
@@ -183,25 +222,25 @@ namespace EQWOWPregenScripts
                         currentQuest.MinimumExpansion = minimumExpansion;
 
                         // Required Items
-                        List<int> requiredItems = new List<int>();
-                        foreach (int requiredItemID in GetRequiredItemIDsFromLine(line))
-                        {
-                            bool foundExistingItemID = false;
-                            for (int ii = 0; ii < currentQuest.RequiredItemIDs.Count; ii++)
-                            {
-                                if (currentQuest.RequiredItemIDs[ii] == requiredItemID)
-                                {
-                                    currentQuest.RequiredItemCounts[ii]++;
-                                    foundExistingItemID = true;
-                                    break;
-                                }
-                            }
-                            if (foundExistingItemID == false)
-                            {
-                                currentQuest.RequiredItemIDs.Add(requiredItemID);
-                                currentQuest.RequiredItemCounts.Add(1);
-                            }
-                        }
+                        //List<int> requiredItems = new List<int>();
+                        //foreach (int requiredItemID in GetRequiredItemIDsFromLine(line))
+                        //{
+                        //    bool foundExistingItemID = false;
+                        //    for (int ii = 0; ii < currentQuest.RequiredItemIDs.Count; ii++)
+                        //    {
+                        //        if (currentQuest.RequiredItemIDs[ii] == requiredItemID)
+                        //        {
+                        //            currentQuest.RequiredItemCounts[ii]++;
+                        //            foundExistingItemID = true;
+                        //            break;
+                        //        }
+                        //    }
+                        //    if (foundExistingItemID == false)
+                        //    {
+                        //        currentQuest.RequiredItemIDs.Add(requiredItemID);
+                        //        currentQuest.RequiredItemCounts.Add(1);
+                        //    }
+                        //}
 
                         // Required Faction
                         if (line.Contains("Faction"))
@@ -230,14 +269,22 @@ namespace EQWOWPregenScripts
                         // Text line
                         if (line.Contains("text"))
                         {
-                            exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "Found a text line but it wasn't handled", i, line));
-                            currentQuest = null;
-                            break;
-                            //string textVariableName = StringHelper.GetTextVariableNameFromLine(line);
-                            //if (foundTextLinesByTextVariableName.ContainsKey(textVariableName) == false)
-                            //    exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "found a text line named " + textVariableName + " but it wasn't defined", i, line));
-                            //else
-                            //    currentQuest.RequestText = StringHelper.ConvertText(foundTextLinesByTextVariableName[textVariableName]);
+                            if (line.Contains("text4") && LocalVariableValuesByName.ContainsKey("text4"))
+                                currentQuest.RequestText = StringHelper.ConvertText(LocalVariableValuesByName["text4"]);
+                            else if (line.Contains("text3") && LocalVariableValuesByName.ContainsKey("text3"))
+                                currentQuest.RequestText = StringHelper.ConvertText(LocalVariableValuesByName["text3"]);
+                            else if (line.Contains("text2") && LocalVariableValuesByName.ContainsKey("text2"))
+                                currentQuest.RequestText = StringHelper.ConvertText(LocalVariableValuesByName["text2"]);
+                            else if (line.Contains("text1") && LocalVariableValuesByName.ContainsKey("text1"))
+                                currentQuest.RequestText = StringHelper.ConvertText(LocalVariableValuesByName["text1"]);
+                            else if (line.Contains("text") && LocalVariableValuesByName.ContainsKey("text"))
+                                currentQuest.RequestText = StringHelper.ConvertText(LocalVariableValuesByName["text"]);
+                            else
+                            {
+                                exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "Found a text line but it wasn't handled", i, line));
+                                currentQuest = null;
+                                break;
+                            }   
                         }
                     }
 

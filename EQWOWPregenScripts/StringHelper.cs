@@ -246,6 +246,7 @@ namespace EQWOWPregenScripts
             // Parse the parameters up to the matching closing parenthesis
             int startIndex = methodMatch.Index + methodMatch.Length;
             int parenthesisDepth = 1;
+            int braceDepth = 0;
             int i = startIndex;
 
             // Find the end of the parameter list
@@ -256,19 +257,24 @@ namespace EQWOWPregenScripts
                     parenthesisDepth++;
                 else if (c == ')')
                     parenthesisDepth--;
+                else if (c == '{')
+                    braceDepth++;
+                else if (c == '}')
+                    braceDepth--;
                 i++;
             }
 
-            // Unmatched parenthesis
-            if (parenthesisDepth != 0)
+            // Unmatched parenthesis or braces
+            if (parenthesisDepth != 0 || braceDepth != 0)
                 return new List<string>();
 
             // Extract the parameter string
             string parameters = inputLine.Substring(startIndex, i - startIndex - 1).Trim();
 
-            // plit parameters, respecting nested parentheses
+            // Split parameters, respecting nested parentheses and braces
             List<string> paramList = new List<string>();
             parenthesisDepth = 0;
+            braceDepth = 0;
             int paramStart = 0;
 
             for (int j = 0; j < parameters.Length; j++)
@@ -279,7 +285,11 @@ namespace EQWOWPregenScripts
                     parenthesisDepth++;
                 else if (c == ')')
                     parenthesisDepth--;
-                else if (c == ',' && parenthesisDepth == 0)
+                else if (c == '{')
+                    braceDepth++;
+                else if (c == '}')
+                    braceDepth--;
+                else if (c == ',' && parenthesisDepth == 0 && braceDepth == 0)
                 {
                     // Found a parameter separator at the top level
                     string param = parameters.Substring(paramStart, j - paramStart).Trim();
@@ -346,17 +356,29 @@ namespace EQWOWPregenScripts
             return 0;
         }
 
-        static public string GetTextVariableNameFromLine(string line)
+        //static public string GetTextVariableNameFromLine(string line)
+        //{
+        //    string[] lineBlocks = line.Replace("then", "").Trim().Split(",");
+        //    for (int i = 0; i < lineBlocks.Length; i++)
+        //    {
+        //        if (lineBlocks[i].Contains("text"))
+        //        {
+        //            return lineBlocks[i].Replace(")", "").Trim();
+        //        }
+        //    }
+        //    return string.Empty;
+        //}
+
+        static public (string key, string value) GetLocalbleDataFromLine(string line)
         {
-            string[] lineBlocks = line.Replace("then", "").Trim().Split(",");
-            for (int i = 0; i < lineBlocks.Length; i++)
-            {
-                if (lineBlocks[i].Contains("text"))
-                {
-                    return lineBlocks[i].Replace(")", "").Trim();
-                }
-            }
-            return string.Empty;
+            (string key, string value) pairVariable = new (string.Empty, string.Empty);
+            if (line.Contains("=") == false)
+                return pairVariable;
+
+            string workingLine = line.Replace("local", "").Trim();
+            pairVariable.key = workingLine.Split("=")[0].Trim();
+            pairVariable.value = workingLine.Split("=")[1].Trim();
+            return pairVariable;
         }
     }
 }
