@@ -77,17 +77,18 @@ namespace EQWOWPregenScripts.Quests
                 int platinum = 0;
                 foreach (string parameter in parameterGroups)
                 {
-                    string[] blocks = parameter.Split(",");
-                    switch (blocks[0])
+                    string[] keyValuePair = parameter.Split(" ", 2);
+                    keyValuePair[0] = keyValuePair[0].Replace(",", "").Trim();
+                    switch (keyValuePair[0])
                     {
                         case "itemid":
                             {
-                                if (blocks[1].Contains("ChooseRandom"))
+                                if (keyValuePair[1].Contains("ChooseRandom"))
                                 {
-                                    List<string> itemIDStrings = StringHelper.ExtractMethodParameters(blocks[1], "ChooseRandom");
+                                    List<string> itemIDStrings = StringHelper.ExtractMethodParameters(keyValuePair[1], "ChooseRandom");
                                     if (itemIDStrings.Count == 0)
                                     {
-                                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Item reward had ChooseRandom, but no IDs were extracted: " + blocks[1], 0, line));
+                                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Item reward had ChooseRandom, but no IDs were extracted: " + keyValuePair[1], 0, line));
                                         return null;
                                     }
                                     float itemChance = 100 / itemIDStrings.Count;
@@ -107,10 +108,10 @@ namespace EQWOWPregenScripts.Quests
                                 else
                                 {
                                     int itemID;
-                                    bool parseSuccess = int.TryParse(blocks[1], out itemID);
+                                    bool parseSuccess = int.TryParse(keyValuePair[1], out itemID);
                                     if (parseSuccess == false)
                                     {
-                                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Unable to determine the ItemID from the string " + blocks[1], 0, line));
+                                        exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Unable to determine the ItemID from the string " + keyValuePair[1], 0, line));
                                         return null;
                                     }
                                     if (itemID != 0)
@@ -139,32 +140,32 @@ namespace EQWOWPregenScripts.Quests
                             break;
                         case "exp":
                             {
-                                returnReward.Experience = StringHelper.GetSingleRangedIntFromString(blocks[1], zoneShortName, questgiverName, ref exceptionLines);
+                                returnReward.Experience = StringHelper.GetSingleRangedIntFromString(keyValuePair[1], zoneShortName, questgiverName, ref exceptionLines);
                             }
                             break;
                         case "copper":
                             {
-                                copper = StringHelper.GetSingleRangedIntFromString(blocks[1], zoneShortName, questgiverName, ref exceptionLines);
+                                copper = StringHelper.GetSingleRangedIntFromString(keyValuePair[1], zoneShortName, questgiverName, ref exceptionLines);
                             }
                             break;
                         case "silver":
                             {
-                                silver = StringHelper.GetSingleRangedIntFromString(blocks[1], zoneShortName, questgiverName, ref exceptionLines);
+                                silver = StringHelper.GetSingleRangedIntFromString(keyValuePair[1], zoneShortName, questgiverName, ref exceptionLines);
                             }
                             break;
                         case "gold":
                             {
-                                gold = StringHelper.GetSingleRangedIntFromString(blocks[1], zoneShortName, questgiverName, ref exceptionLines);
+                                gold = StringHelper.GetSingleRangedIntFromString(keyValuePair[1], zoneShortName, questgiverName, ref exceptionLines);
                             }
                             break;
                         case "platinum":
                             {
-                                platinum = StringHelper.GetSingleRangedIntFromString(blocks[1], zoneShortName, questgiverName, ref exceptionLines);
+                                platinum = StringHelper.GetSingleRangedIntFromString(keyValuePair[1], zoneShortName, questgiverName, ref exceptionLines);
                             }
                             break;
                         default:
                             {
-                                exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Unhandled parameter block inside curly brace line with key " + blocks[0], 0, line));
+                                exceptionLines.Add(new ExceptionLine(questgiverName, zoneShortName, "Unhandled parameter block inside curly brace line with key " + keyValuePair[0], 0, line));
                             }
                             break;
                     }

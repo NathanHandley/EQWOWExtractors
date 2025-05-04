@@ -123,8 +123,6 @@ namespace EQWOWPregenScripts
                     return true;
                 //if (line.Contains("SummonCursorItem"))
                 //    return true;
-                //if (line.Contains("QuestReward"))
-                //    return true;
             }
 
             return false;
@@ -250,10 +248,6 @@ namespace EQWOWPregenScripts
                             if (workingLine.Contains("GetFaction("))
                             {
                                 int minFactionLevel = int.Parse(blocks[2].Replace(")", ""));
-                                if (blocks[2].Contains("-"))
-                                {
-                                    int x = 5;
-                                }
                                 if (blocks[1] == "<")
                                     minFactionLevel--;
                                 currentQuest.MinimumFaction = GetFactionValueFromFactionLevel(minFactionLevel);
