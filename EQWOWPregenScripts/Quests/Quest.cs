@@ -35,6 +35,7 @@ namespace EQWOWPregenScripts.Quests
         public int MinimumExpansion = -1;
         public string RequestText = string.Empty;
         public string RewardText = string.Empty;
+        public string NotEnoughItemsText = string.Empty;
         public string RewardEmote = string.Empty;
         public List<string> ResponseReactionsRaw = new List<string>();
 

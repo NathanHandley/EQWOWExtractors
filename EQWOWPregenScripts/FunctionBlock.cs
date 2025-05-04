@@ -121,8 +121,8 @@ namespace EQWOWPregenScripts
             {
                 if (line.Contains("check_turn_in"))
                     return true;
-                //if (line.Contains("SummonCursorItem"))
-                //    return true;
+                if (line.Contains("SummonCursorItem"))
+                    return true;
             }
 
             return false;
@@ -130,9 +130,6 @@ namespace EQWOWPregenScripts
 
         public List<Quest> ExtractQuests(ref List<ExceptionLine> exceptionLines, List<string> variableLines)
         {
-            if (NpcName == string.Empty)
-                throw new Exception("Not loaded");
-
             // Pull out the quest blocks to work with and process them
             List<FunctionBlock> questBlocks = GetFunctionBlocksForQuests(ref exceptionLines);
             List<Quest> extractedQuests = new List<Quest>();
@@ -143,6 +140,41 @@ namespace EQWOWPregenScripts
                 for (int i = 0; i < curQuestBlock.BlockLines.Count; i++)
                 {
                     string line = curQuestBlock.BlockLines[i];
+
+                    if (line.Contains("e.message:find"))
+                    {
+                        // Multi-part conditionals should be skipped and done manually
+                        if (line.Contains(" or "))
+                        {
+                            exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "e.message:find has 'or' conditional", i, line));
+                            currentQuest = null;
+                            break;
+                        }
+                        if (line.Contains(" not "))
+                        {
+                            exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "e.message:find has 'not'", i, line));
+                            currentQuest = null;
+                            break;
+                        }
+                        if (StringHelper.StringHasTwoFragments(line, " and "))
+                        {
+                            exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "e.message:find has two 'and'", i, line));
+                            currentQuest = null;
+                            break;
+                        }
+                    }
+
+                    // If there is a say and it was a talking block, then that's the request text
+                    if (curQuestBlock.FunctionName.Contains("event_say") && line.Contains("self:Say"))
+                    {
+                        if (currentQuest != null)
+                        {
+                            if (currentQuest.RequestText.Length > 0)
+                                currentQuest.RequestText += "$B" + StringHelper.ConvertText(StringHelper.ExtractMethodParameters(line, "e.self:Say")[0]);
+                            else
+                                currentQuest.RequestText = StringHelper.ConvertText(StringHelper.ExtractMethodParameters(line, "e.self:Say")[0]);
+                        }
+                    }
 
                     // Quest requirements
                     if (line.Contains("check_turn_in"))
@@ -264,15 +296,15 @@ namespace EQWOWPregenScripts
                         if (line.Contains("text"))
                         {
                             if (line.Contains("text4") && LocalVariableValuesByName.ContainsKey("text4"))
-                                currentQuest.RequestText = StringHelper.ConvertText(LocalVariableValuesByName["text4"]);
+                                currentQuest.NotEnoughItemsText = StringHelper.ConvertText(LocalVariableValuesByName["text4"]);
                             else if (line.Contains("text3") && LocalVariableValuesByName.ContainsKey("text3"))
-                                currentQuest.RequestText = StringHelper.ConvertText(LocalVariableValuesByName["text3"]);
+                                currentQuest.NotEnoughItemsText = StringHelper.ConvertText(LocalVariableValuesByName["text3"]);
                             else if (line.Contains("text2") && LocalVariableValuesByName.ContainsKey("text2"))
-                                currentQuest.RequestText = StringHelper.ConvertText(LocalVariableValuesByName["text2"]);
+                                currentQuest.NotEnoughItemsText = StringHelper.ConvertText(LocalVariableValuesByName["text2"]);
                             else if (line.Contains("text1") && LocalVariableValuesByName.ContainsKey("text1"))
-                                currentQuest.RequestText = StringHelper.ConvertText(LocalVariableValuesByName["text1"]);
+                                currentQuest.NotEnoughItemsText = StringHelper.ConvertText(LocalVariableValuesByName["text1"]);
                             else if (line.Contains("text") && LocalVariableValuesByName.ContainsKey("text"))
-                                currentQuest.RequestText = StringHelper.ConvertText(LocalVariableValuesByName["text"]);
+                                currentQuest.NotEnoughItemsText = StringHelper.ConvertText(LocalVariableValuesByName["text"]);
                             else
                             {
                                 exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "Found a text line but it wasn't handled", i, line));
@@ -338,7 +370,7 @@ namespace EQWOWPregenScripts
             FunctionBlock? curFunctionBlock = null;
             if (FunctionName.Contains("event_trade"))
             {
-                for (int i = 0; i < BlockLines.Count-1; i++)
+                for (int i = 0; i < BlockLines.Count - 1; i++)
                 {
                     string curLine = BlockLines[i];
 
@@ -358,6 +390,7 @@ namespace EQWOWPregenScripts
                         if (curFunctionBlock != null)
                             exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "check_turn_in found before finishing prior quest", i, curLine));
                         curFunctionBlock = new FunctionBlock();
+                        curFunctionBlock.FunctionName = FunctionName;
                     }
 
                     // Skip conditionals
@@ -366,6 +399,58 @@ namespace EQWOWPregenScripts
                         exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "Conditional found in quest block, so nullifying it to make manually", i, curLine));
                         curFunctionBlock = null;
                     }
+
+                    if (curFunctionBlock != null)
+                        curFunctionBlock.BlockLines.Add(curLine);
+                }
+            }
+            else if (FunctionName.Contains("event_say"))
+            {
+                bool rewardFound = false;
+                for (int i = 0; i < BlockLines.Count - 1; i++)
+                {
+                    string curLine = BlockLines[i];
+
+                    // New quest block
+                    if (curLine.Contains("e.message:findi"))
+                    {
+                        // This is just a dialog item
+                        curFunctionBlock = new FunctionBlock();
+                        curFunctionBlock.FunctionName = FunctionName;
+                    }
+
+                    // This ends a block
+                    else if (curLine.StartsWith("elseif") || curLine.StartsWith("end"))
+                    {
+                        // If null, it's just a dialog item
+                        if (curFunctionBlock != null)
+                        {
+                            // Only save it if it had a reward
+                            if (rewardFound == true)
+                            {
+                                questFunctionBlocks.Add(curFunctionBlock);
+                                rewardFound = false;
+                            }
+                        }
+                        curFunctionBlock = null;
+
+                        if (curLine.Contains("e.message:findi"))
+                        {
+                            curFunctionBlock = new FunctionBlock();
+                            curFunctionBlock.FunctionName = FunctionName;
+                        }
+                    }
+
+                    // Skip conditionals
+                    else if (curFunctionBlock != null && curLine.Contains("if("))
+                    {
+                        exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "Conditional found in quest block, so nullifying it to make manually", i, curLine));
+                        curFunctionBlock = null;
+                    }
+
+                    // See if a reward was located
+                    if (curLine.Contains("SummonCursorItem"))
+                        rewardFound = true;
 
                     if (curFunctionBlock != null)
                         curFunctionBlock.BlockLines.Add(curLine);
