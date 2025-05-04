@@ -115,28 +115,6 @@ namespace EQWOWPregenScripts
             }
         }
 
-        private List<int> GetRequiredItemIDsFromLine(string line)
-        {
-            List<int> requiredItemIDs = new List<int>();
-            string[] lineBlocks = line.Split(",");
-            for (int i = 0; i < lineBlocks.Length; i++)
-            {
-                if (lineBlocks[i].Contains("check") == false && lineBlocks[i].Contains("item") == true)
-                {
-                    lineBlocks[i] = lineBlocks[i].Replace("then", "");
-                    lineBlocks[i] = lineBlocks[i].Trim();
-                    string[] blockParts = lineBlocks[i].Split(" ");
-                    string idString = blockParts[blockParts.Length - 1].Replace("}", "").Replace(")", "").Replace("=", "");
-                    if (idString.Trim().Length != 0)
-                    {
-                        int itemID = int.Parse(idString);
-                        requiredItemIDs.Add(itemID);
-                    }
-                }
-            }
-            return requiredItemIDs;
-        }
-
         public bool HasPossibleQuestData()
         {
             foreach (string line in BlockLines)
@@ -199,18 +177,8 @@ namespace EQWOWPregenScripts
                             currentQuest = null;
                             break;
                         }
-
-                        // Required Items
-                        string requiredItems = turnInParameters[2];
-
-
-
-
-                        if (line.Contains("{"))
-                        {
-                            List<string> pairs = StringHelper.ExtractCurlyBraceParameters(line);
-                            exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "check_turn_in {", i, line));
-                        }
+                        if (currentQuest == null)
+                            continue;
 
                         // Look for expansion limits
                         int minimumExpansion = -1;
@@ -221,26 +189,54 @@ namespace EQWOWPregenScripts
                         }
                         currentQuest.MinimumExpansion = minimumExpansion;
 
-                        // Required Items
-                        //List<int> requiredItems = new List<int>();
-                        //foreach (int requiredItemID in GetRequiredItemIDsFromLine(line))
-                        //{
-                        //    bool foundExistingItemID = false;
-                        //    for (int ii = 0; ii < currentQuest.RequiredItemIDs.Count; ii++)
-                        //    {
-                        //        if (currentQuest.RequiredItemIDs[ii] == requiredItemID)
-                        //        {
-                        //            currentQuest.RequiredItemCounts[ii]++;
-                        //            foundExistingItemID = true;
-                        //            break;
-                        //        }
-                        //    }
-                        //    if (foundExistingItemID == false)
-                        //    {
-                        //        currentQuest.RequiredItemIDs.Add(requiredItemID);
-                        //        currentQuest.RequiredItemCounts.Add(1);
-                        //    }
-                        //}
+                        // Things required are in the 3rd parameter block
+                        List<string> handInPairs = StringHelper.ExtractCurlyBraceParameters(turnInParameters[2]);
+                        List<int> requiredItems = new List<int>();
+                        int requiredCopper = 0;
+                        foreach (string handInPair in handInPairs)
+                        {
+                            string key = handInPair.Split(",")[0].Trim();
+                            string value = handInPair.Split(",")[1].Trim();
+                            switch (key)
+                            {
+                                case "item1":   requiredItems.Add(int.Parse(value)); break;
+                                case "item2":   requiredItems.Add(int.Parse(value)); break;
+                                case "item3":   requiredItems.Add(int.Parse(value)); break;
+                                case "item4":   requiredItems.Add(int.Parse(value)); break;
+                                case "copper":  requiredCopper += int.Parse(value); break;
+                                case "silver":  requiredCopper += int.Parse(value)*10; break;
+                                case "gold":    requiredCopper += int.Parse(value)*100; break;
+                                case "platinum":requiredCopper += int.Parse(value)*1000; break;
+                                default:
+                                    {
+                                        exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "check_turn_in has an unhandled parameter key of " + key, i, line));
+                                    } break;
+                            }
+                        }
+
+                        // Items
+                        foreach (int requiredItemID in requiredItems)
+                        {
+                            bool foundExistingItemID = false;
+                            for (int ii = 0; ii < currentQuest.RequiredItemIDs.Count; ii++)
+                            {
+                                if (currentQuest.RequiredItemIDs[ii] == requiredItemID)
+                                {
+                                    currentQuest.RequiredItemCounts[ii]++;
+                                    foundExistingItemID = true;
+                                    break;
+                                }
+                            }
+                            if (foundExistingItemID == false)
+                            {
+                                currentQuest.RequiredItemIDs.Add(requiredItemID);
+                                currentQuest.RequiredItemCounts.Add(1);
+                            }
+                        }
+
+                        // Money
+                        if (requiredCopper > 0)
+                            currentQuest.RequiredMoneyInCopper = requiredCopper;
 
                         // Required Faction
                         if (line.Contains("Faction"))
@@ -254,6 +250,10 @@ namespace EQWOWPregenScripts
                             if (workingLine.Contains("GetFaction("))
                             {
                                 int minFactionLevel = int.Parse(blocks[2].Replace(")", ""));
+                                if (blocks[2].Contains("-"))
+                                {
+                                    int x = 5;
+                                }
                                 if (blocks[1] == "<")
                                     minFactionLevel--;
                                 currentQuest.MinimumFaction = GetFactionValueFromFactionLevel(minFactionLevel);

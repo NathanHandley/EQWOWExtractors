@@ -169,7 +169,7 @@ namespace EQWOWPregenScripts.Quests
                             break;
                     }
                 }
-                returnReward.Money = copper + (silver * 100) + (gold * 10000) + (platinum * 1000000);
+                returnReward.Money = copper + (silver * 10) + (gold * 100) + (platinum * 1000);
             }
             else
             {
@@ -199,7 +199,7 @@ namespace EQWOWPregenScripts.Quests
                     gold = StringHelper.GetSingleRangedIntFromString(parameters[4], zoneShortName, questgiverName, ref exceptionLines);
 
                 // Add/assign the money
-                returnReward.Money = copper + (silver * 100) + (gold * 10000) + (platinum * 1000000);
+                returnReward.Money = copper + (silver * 10) + (gold * 100) + (platinum * 1000);
 
                 // ItemID
                 if (parameters.Count > 5)

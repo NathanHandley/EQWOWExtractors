@@ -87,7 +87,7 @@ namespace EQWOWPregenScripts.Quests
         static private void OutputQuestTemplates(List<Quest> quests)
         {
             StringBuilder outputHeaderSB = new StringBuilder();
-            outputHeaderSB.Append("wow_questid|zone_shortname|questgiver_name|quest_name|req_repmin|");
+            outputHeaderSB.Append("wow_questid|zone_shortname|questgiver_name|quest_name|req_repmin|req_copper|");
             for (int i = 1; i <= 6; i++)
             {
                 outputHeaderSB.Append("req_item_id");
@@ -130,6 +130,8 @@ namespace EQWOWPregenScripts.Quests
                 outputLineSB.Append(quest.Name);
                 outputLineSB.Append("|");
                 outputLineSB.Append(quest.MinimumFaction);
+                outputLineSB.Append("|");
+                outputLineSB.Append(quest.RequiredMoneyInCopper);
                 outputLineSB.Append("|");
                 for (int i = 0; i < 6; i++)
                 {
