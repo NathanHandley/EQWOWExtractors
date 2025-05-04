@@ -271,31 +271,53 @@ namespace EQWOWPregenScripts
             // Extract the parameter string
             string parameters = inputLine.Substring(startIndex, i - startIndex - 1).Trim();
 
-            // Split parameters, respecting nested parentheses and braces
+            // Split parameters, respecting nested parentheses, braces, and quoted strings
             List<string> paramList = new List<string>();
             parenthesisDepth = 0;
             braceDepth = 0;
             int paramStart = 0;
+            bool inSingleQuote = false;
+            bool inDoubleQuote = false;
 
             for (int j = 0; j < parameters.Length; j++)
             {
                 char c = parameters[j];
 
-                if (c == '(')
-                    parenthesisDepth++;
-                else if (c == ')')
-                    parenthesisDepth--;
-                else if (c == '{')
-                    braceDepth++;
-                else if (c == '}')
-                    braceDepth--;
-                else if (c == ',' && parenthesisDepth == 0 && braceDepth == 0)
+                // Handle quote states
+                if (c == '\'' && !inDoubleQuote)
                 {
-                    // Found a parameter separator at the top level
-                    string param = parameters.Substring(paramStart, j - paramStart).Trim();
-                    if (!string.IsNullOrEmpty(param))
-                        paramList.Add(param);
-                    paramStart = j + 1;
+                    inSingleQuote = !inSingleQuote;
+                }
+                else if (c == '"' && !inSingleQuote)
+                {
+                    inDoubleQuote = !inDoubleQuote;
+                }
+                // Handle escaped quotes
+                else if ((c == '\\' && j + 1 < parameters.Length) &&
+                         (parameters[j + 1] == '\'' || parameters[j + 1] == '"'))
+                {
+                    j++; // Skip the escaped character
+                    continue;
+                }
+                // Track nesting
+                else if (!inSingleQuote && !inDoubleQuote)
+                {
+                    if (c == '(')
+                        parenthesisDepth++;
+                    else if (c == ')')
+                        parenthesisDepth--;
+                    else if (c == '{')
+                        braceDepth++;
+                    else if (c == '}')
+                        braceDepth--;
+                    else if (c == ',' && parenthesisDepth == 0 && braceDepth == 0)
+                    {
+                        // Found a parameter separator at the top level
+                        string param = parameters.Substring(paramStart, j - paramStart).Trim();
+                        if (!string.IsNullOrEmpty(param))
+                            paramList.Add(param);
+                        paramStart = j + 1;
+                    }
                 }
             }
 
