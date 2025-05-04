@@ -51,7 +51,10 @@ namespace EQWOWPregenScripts
                 // Grab the line, removing comments and cap whitespaces
                 string curLine = inputLines[i].Split("--")[0].Trim();
                 if (curLine.Length == 0)
+                {
+                    readLineCount++;
                     continue;
+                }
 
                 BlockLines.Add(curLine);
                 readLineCount++;
@@ -144,12 +147,6 @@ namespace EQWOWPregenScripts
                     if (line.Contains("e.message:find"))
                     {
                         // Multi-part conditionals should be skipped and done manually
-                        if (line.Contains(" or "))
-                        {
-                            exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "e.message:find has 'or' conditional", i, line));
-                            currentQuest = null;
-                            break;
-                        }
                         if (line.Contains(" not "))
                         {
                             exceptionLines.Add(new ExceptionLine(NpcName, ZoneShortName, "e.message:find has 'not'", i, line));

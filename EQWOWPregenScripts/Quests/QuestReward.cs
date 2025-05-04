@@ -57,12 +57,8 @@ namespace EQWOWPregenScripts.Quests
             // TODO: Handle these conditions
             if (workingLine.Contains(" or"))
                 return null;
-            //if (workingLine.Contains("random"))
-            //    return null;
-            //if (workingLine.Contains("ChooseRandom"))
-            //    return null;
-            //if (workingLine.Contains("GetFaction"))
-            //    return null;
+            if (workingLine.Contains("GetFaction"))
+                return null;
 
             // There are two reward line patterns:
             // - One that is a normal parameter list separated by comma
