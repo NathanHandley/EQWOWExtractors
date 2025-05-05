@@ -2,7 +2,7 @@
 
 namespace EQWOWPregenScripts
 {
-    internal class FileProcessor
+    internal class NPCDataExtractor
     {
         private void ExtractFunctionsAndVariables(string npcName, string zoneShortName, List<string> lines, ref List<ExceptionLine> exceptionLines, out List<string> variableLines,
             out List<FunctionBlock> functionBlocks)

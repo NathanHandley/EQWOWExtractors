@@ -51,31 +51,69 @@
 using EQWOWPregenScripts;
 using EQWOWPregenScripts.Quests;
 
-List<ExceptionLine> exceptionLines = new List<ExceptionLine>();
-List<Quest> quests = new List<Quest>();
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Uncomment to export quests
+//List<ExceptionLine> exceptionLines = new List<ExceptionLine>();
+//List<Quest> quests = new List<Quest>();
 
-FileProcessor fileProcessor = new FileProcessor();
-string zoneQuestFolderRoot = Path.Combine("E:\\ConverterData\\Quests", "zonequests");
-string[] zoneFolders = Directory.GetDirectories(zoneQuestFolderRoot);
-List<string> filesToSkip = new List<string>() { "Shuttle_I", "Shuttle_II", "Shuttle_III", "Shuttle_IV", "SirensBane", "Stormbreaker", "Golden_Maiden", 
-    "Sea_King", "Suddenly", "pirate_runners_skiff", "Maidens_Voyage", "Muckskimmer", "Captains_Skiff", "Barrel_Barge", "Bloated_Belly", "script_init" };
-foreach (string zoneFolder in zoneFolders)
+//NPCDataExtractor npcExtractor = new NPCDataExtractor();
+//string zoneQuestFolderRoot = Path.Combine("E:\\ConverterData\\Quests", "zonequests");
+//string[] zoneFolders = Directory.GetDirectories(zoneQuestFolderRoot);
+//List<string> filesToSkip = new List<string>() { "Shuttle_I", "Shuttle_II", "Shuttle_III", "Shuttle_IV", "SirensBane", "Stormbreaker", "Golden_Maiden", 
+//    "Sea_King", "Suddenly", "pirate_runners_skiff", "Maidens_Voyage", "Muckskimmer", "Captains_Skiff", "Barrel_Barge", "Bloated_Belly", "script_init" };
+//foreach (string zoneFolder in zoneFolders)
+//{
+//    // Shortname
+//    string zoneShortName = Path.GetFileName(zoneFolder);
+
+//    string[] questNPCFiles = Directory.GetFiles(zoneFolder, "*.lua");
+//    foreach (string questNPCFile in questNPCFiles)
+//    {
+//        string npcName = Path.GetFileNameWithoutExtension(questNPCFile);
+//        if (filesToSkip.Contains(npcName))
+//            continue;
+
+//        npcExtractor.ProcessFile(questNPCFile, zoneShortName, ref exceptionLines, ref quests);
+//    }
+//}
+//Quest.OutputQuests(quests);
+//ExceptionLine.OutputExceptionLines(exceptionLines);
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
+// Create item lookups
+string itemTemplatesFile = "E:\\ConverterData\\itemTemplates.csv";
+Dictionary<int, string> itemNamesByEQIDs = new Dictionary<int, string>();
+foreach (Dictionary<string, string> itemColumns in FileTool.ReadAllRowsFromFileWithHeader(itemTemplatesFile, "|"))
+    itemNamesByEQIDs.Add(Convert.ToInt32(itemColumns["id"]), itemColumns["Name"]);
+
+// Map the item names to the first required item
+string questTemplatesFileInput = "E:\\ConverterData\\QuestTemplates.csv";
+List<Dictionary<string, string>> questTemplatesRows = FileTool.ReadAllRowsFromFileWithHeader(questTemplatesFileInput, "|");
+for (int i = 0; i < questTemplatesRows.Count; i++)
 {
-    // Shortname
-    string zoneShortName = Path.GetFileName(zoneFolder);
-
-    string[] questNPCFiles = Directory.GetFiles(zoneFolder, "*.lua");
-    foreach (string questNPCFile in questNPCFiles)
+    Dictionary<string, string> questColumns = questTemplatesRows[i];
+    int requiredItem1ID = int.Parse(questColumns["req_item_id1"]);
+    if (requiredItem1ID != -1)
     {
-        string npcName = Path.GetFileNameWithoutExtension(questNPCFile);
-        if (filesToSkip.Contains(npcName))
-            continue;
-
-        fileProcessor.ProcessFile(questNPCFile, zoneShortName, ref exceptionLines, ref quests);
+        if (itemNamesByEQIDs.ContainsKey(requiredItem1ID) == false)
+            questColumns["req_item1_name"] = "INVALID";
+        else
+            questColumns["req_item1_name"] = itemNamesByEQIDs[requiredItem1ID];
+    }
+    int rewardItem1ID = int.Parse(questColumns["reward_item_ID1"]);
+    if (rewardItem1ID != -1)
+    {
+        if (itemNamesByEQIDs.ContainsKey(rewardItem1ID) == false)
+            questColumns["reward_item1_name"] = "INVALID";
+        else
+            questColumns["reward_item1_name"] = itemNamesByEQIDs[rewardItem1ID];
     }
 }
-Quest.OutputQuests(quests);
-ExceptionLine.OutputExceptionLines(exceptionLines);
+
+// Write a new file for it
+string questTemplatesFileOutput = "E:\\ConverterData\\QuestTemplatesUpdated.csv";
+FileTool.WriteFile(questTemplatesFileOutput, questTemplatesRows);
 
 Console.WriteLine("Done. Press any key...");
 Console.ReadKey();
