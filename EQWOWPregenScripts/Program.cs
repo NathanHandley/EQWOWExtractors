@@ -50,6 +50,7 @@
 
 using EQWOWPregenScripts;
 using EQWOWPregenScripts.Quests;
+using System.Text;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Uncomment to export quests
@@ -80,40 +81,65 @@ using EQWOWPregenScripts.Quests;
 //ExceptionLine.OutputExceptionLines(exceptionLines);
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Create item lookups
-string itemTemplatesFile = "E:\\ConverterData\\itemTemplates.csv";
-Dictionary<int, string> itemNamesByEQIDs = new Dictionary<int, string>();
-foreach (Dictionary<string, string> itemColumns in FileTool.ReadAllRowsFromFileWithHeader(itemTemplatesFile, "|"))
-    itemNamesByEQIDs.Add(Convert.ToInt32(itemColumns["id"]), itemColumns["Name"]);
+//string itemTemplatesFile = "E:\\ConverterData\\itemTemplates.csv";
+//Dictionary<int, string> itemNamesByEQIDs = new Dictionary<int, string>();
+//foreach (Dictionary<string, string> itemColumns in FileTool.ReadAllRowsFromFileWithHeader(itemTemplatesFile, "|"))
+//    itemNamesByEQIDs.Add(Convert.ToInt32(itemColumns["id"]), itemColumns["Name"]);
 
-// Map the item names to the first required item
-string questTemplatesFileInput = "E:\\ConverterData\\QuestTemplates.csv";
-List<Dictionary<string, string>> questTemplatesRows = FileTool.ReadAllRowsFromFileWithHeader(questTemplatesFileInput, "|");
-for (int i = 0; i < questTemplatesRows.Count; i++)
+//// Map the item names to the first required item
+//string questTemplatesFileInput = "E:\\ConverterData\\QuestTemplates.csv";
+//List<Dictionary<string, string>> questTemplatesRows = FileTool.ReadAllRowsFromFileWithHeader(questTemplatesFileInput, "|");
+//for (int i = 0; i < questTemplatesRows.Count; i++)
+//{
+//    Dictionary<string, string> questColumns = questTemplatesRows[i];
+//    int requiredItem1ID = int.Parse(questColumns["req_item_id1"]);
+//    if (requiredItem1ID != -1)
+//    {
+//        if (itemNamesByEQIDs.ContainsKey(requiredItem1ID) == false)
+//            questColumns["req_item1_name"] = "INVALID";
+//        else
+//            questColumns["req_item1_name"] = itemNamesByEQIDs[requiredItem1ID];
+//    }
+//    int rewardItem1ID = int.Parse(questColumns["reward_item_ID1"]);
+//    if (rewardItem1ID != -1)
+//    {
+//        if (itemNamesByEQIDs.ContainsKey(rewardItem1ID) == false)
+//            questColumns["reward_item1_name"] = "INVALID";
+//        else
+//            questColumns["reward_item1_name"] = itemNamesByEQIDs[rewardItem1ID];
+//    }
+//}
+
+//// Write a new file for it
+//string questTemplatesFileOutput = "E:\\ConverterData\\QuestTemplatesUpdated.csv";
+//FileTool.WriteFile(questTemplatesFileOutput, questTemplatesRows);
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Condition reactions
+string questReactionsInputFileName = "E:\\ConverterData\\QuestReactionsInput.csv";
+List<Dictionary<string, string>> discardedRows = new List<Dictionary<string, string>>();
+foreach (Dictionary<string, string> questReactionColumns in FileTool.ReadAllRowsFromFileWithHeader(questReactionsInputFileName, "|"))
 {
-    Dictionary<string, string> questColumns = questTemplatesRows[i];
-    int requiredItem1ID = int.Parse(questColumns["req_item_id1"]);
-    if (requiredItem1ID != -1)
-    {
-        if (itemNamesByEQIDs.ContainsKey(requiredItem1ID) == false)
-            questColumns["req_item1_name"] = "INVALID";
-        else
-            questColumns["req_item1_name"] = itemNamesByEQIDs[requiredItem1ID];
-    }
-    int rewardItem1ID = int.Parse(questColumns["reward_item_ID1"]);
-    if (rewardItem1ID != -1)
-    {
-        if (itemNamesByEQIDs.ContainsKey(rewardItem1ID) == false)
-            questColumns["reward_item1_name"] = "INVALID";
-        else
-            questColumns["reward_item1_name"] = itemNamesByEQIDs[rewardItem1ID];
-    }
-}
+    QuestReaction curQuestReaction = new QuestReaction();
+    curQuestReaction.QuestID = int.Parse(questReactionColumns["wow_questid"]);
+    curQuestReaction.ZoneShortName = questReactionColumns["zone_shortname"];
+    curQuestReaction.QuestGiverName = questReactionColumns["questgiver_name"];
+    string reactionString = questReactionColumns["reaction"];
 
-// Write a new file for it
-string questTemplatesFileOutput = "E:\\ConverterData\\QuestTemplatesUpdated.csv";
-FileTool.WriteFile(questTemplatesFileOutput, questTemplatesRows);
+    Dictionary<string, string> discardedRow = new Dictionary<string, string>();
+    discardedRow.Add("wow_questid", curQuestReaction.QuestID.ToString());
+    discardedRow.Add("zone_shortname", curQuestReaction.ZoneShortName);
+    discardedRow.Add("questgiver_name", curQuestReaction.QuestGiverName);
+    discardedRow.Add("reaction", reactionString);
+    discardedRows.Add(discardedRow);
+}
+string questReactionsDiscardedFileName = "E:\\ConverterData\\QuestReactionsDiscarded.csv";
+FileTool.WriteFile(questReactionsDiscardedFileName, discardedRows);
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 
 Console.WriteLine("Done. Press any key...");
 Console.ReadKey();
