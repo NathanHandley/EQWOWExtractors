@@ -23,5 +23,9 @@ namespace EQWOWPregenScripts.Quests
         public string QuestGiverName = string.Empty;
         public string ReactionType = string.Empty;
         public string ReactionValue1 = string.Empty;
+        public string ReactionValue2 = string.Empty;
+        public string ReactionValue3 = string.Empty;
+        public string ReactionValue4 = string.Empty;
+        public string ReactionValue5 = string.Empty;
     }
 }

@@ -121,25 +121,124 @@ using System.Text;
 // Condition reactions
 string questReactionsInputFileName = "E:\\ConverterData\\QuestReactionsInput.csv";
 List<Dictionary<string, string>> discardedRows = new List<Dictionary<string, string>>();
-foreach (Dictionary<string, string> questReactionColumns in FileTool.ReadAllRowsFromFileWithHeader(questReactionsInputFileName, "|"))
+List<QuestReaction> reactions = new List<QuestReaction>();
+List<Dictionary<string, string>> questReactionColumnRows = FileTool.ReadAllRowsFromFileWithHeader(questReactionsInputFileName, "|");
+foreach (Dictionary<string, string> questReactionColumns in questReactionColumnRows)
 {
     QuestReaction curQuestReaction = new QuestReaction();
     curQuestReaction.QuestID = int.Parse(questReactionColumns["wow_questid"]);
     curQuestReaction.ZoneShortName = questReactionColumns["zone_shortname"];
     curQuestReaction.QuestGiverName = questReactionColumns["questgiver_name"];
-    string reactionString = questReactionColumns["reaction"];
+    string reactionString = questReactionColumns["reaction"].Trim();
 
-    Dictionary<string, string> discardedRow = new Dictionary<string, string>();
-    discardedRow.Add("wow_questid", curQuestReaction.QuestID.ToString());
-    discardedRow.Add("zone_shortname", curQuestReaction.ZoneShortName);
-    discardedRow.Add("questgiver_name", curQuestReaction.QuestGiverName);
-    discardedRow.Add("reaction", reactionString);
-    discardedRows.Add(discardedRow);
+    // Categorize
+    if (reactionString.Contains("e.self:Say("))
+    {
+        string formattedString = StringHelper.ConvertText(reactionString.Replace("e.self:Say(", ""));
+        curQuestReaction.ReactionType = "say";
+        curQuestReaction.ReactionValue1 = formattedString;
+        reactions.Add(curQuestReaction);
+    }
+    //else if (reactionString.StartsWith("e.self:Emote"))
+    //{
+
+    //}
+    //else if (reactionString.StartsWith("eq.attack(e.other:GetName())"))
+    //{
+
+    //}
+    //else if (reactionString.StartsWith("eq.depop"))
+    //{
+    //    // eq.depop()
+
+    //    // eq.depop(15167); -- 15167 can be any number
+
+    //    // eq.depop_all(116007); -- 116007 can be number
+
+    //    // eq.depop_with_timer()
+
+    //    // eq.depop_with_timer(116063); -- 116063 can be number
+    //}
+    //else if (reactionString.StartsWith("eq.follow(e.other:GetID());"))
+    //{
+    //    // eq.move_to(-1581,-3682,-18,236,true); -- can be different numbers
+    //}
+    else if (reactionString.StartsWith("eq.spawn2("))
+    {
+        curQuestReaction.ReactionType = "spawn";
+        string formattedString = reactionString.Replace("AddToHateList(e.other,1);", "");
+        List<string> methodParameters = StringHelper.ExtractMethodParameters(formattedString, "eq.spawn2");
+        curQuestReaction.ReactionValue1 = methodParameters[0];
+        if (methodParameters[3].Contains("e.self:GetX("))
+            curQuestReaction.ReactionValue2 = "playerX";
+        else
+            curQuestReaction.ReactionValue2 = methodParameters[3];
+        if (methodParameters[4].Contains("e.self:GetY("))
+            curQuestReaction.ReactionValue3 = "playerY";
+        else
+            curQuestReaction.ReactionValue3 = methodParameters[4];
+        if (methodParameters[5].Contains("e.self:GetZ("))
+            curQuestReaction.ReactionValue4 = "playerZ";
+        else
+            curQuestReaction.ReactionValue4 = methodParameters[5];
+        if (methodParameters[6].Contains("e.self:GetHeading"))
+            curQuestReaction.ReactionValue5 = "playerHeading";
+        else
+            curQuestReaction.ReactionValue5 = methodParameters[6];
+        reactions.Add(curQuestReaction);
+    }
+    else if (reactionString.StartsWith("eq.unique_spawn("))
+    {
+
+    }
+
+    // Everything else is discarded
+    else
+    {
+        Dictionary<string, string> discardedRow = new Dictionary<string, string>();
+        discardedRow.Add("wow_questid", curQuestReaction.QuestID.ToString());
+        discardedRow.Add("zone_shortname", curQuestReaction.ZoneShortName);
+        discardedRow.Add("questgiver_name", curQuestReaction.QuestGiverName);
+        discardedRow.Add("reaction", reactionString);
+        discardedRows.Add(discardedRow);
+    }
+
+    // Handle the inlined attack player
+    if (reactionString.Contains("AddToHateList(e.other,1);"))
+    {
+        QuestReaction attackReaction = new QuestReaction();
+        attackReaction.QuestID = int.Parse(questReactionColumns["wow_questid"]);
+        attackReaction.ZoneShortName = questReactionColumns["zone_shortname"];
+        attackReaction.QuestGiverName = questReactionColumns["questgiver_name"];
+        attackReaction.ReactionType = "attackplayer";
+        reactions.Add(attackReaction);
+    }
 }
+
+// Write parsed rows
+string questReactionsOutputFileName = "E:\\ConverterData\\QuestReactionsOutput.csv";
+List<Dictionary<string, string>> outputReactionRows = new List<Dictionary<string, string>>();
+foreach (QuestReaction reaction in reactions)
+{
+    Dictionary<string, string> outputReactionRow = new Dictionary<string, string>();
+    outputReactionRow.Add("wow_questid", reaction.QuestID.ToString());
+    outputReactionRow.Add("zone_shortname", reaction.ZoneShortName);
+    outputReactionRow.Add("questgiver_name", reaction.QuestGiverName);
+    outputReactionRow.Add("reaction_type", reaction.ReactionType);
+    outputReactionRow.Add("reaction_value1", reaction.ReactionValue1);
+    outputReactionRow.Add("reaction_value2", reaction.ReactionValue2);
+    outputReactionRow.Add("reaction_value3", reaction.ReactionValue3);
+    outputReactionRow.Add("reaction_value4", reaction.ReactionValue4);
+    outputReactionRow.Add("reaction_value5", reaction.ReactionValue5);
+    outputReactionRows.Add(outputReactionRow);
+}
+FileTool.WriteFile(questReactionsOutputFileName, outputReactionRows);
+
+// Write discarded rows
 string questReactionsDiscardedFileName = "E:\\ConverterData\\QuestReactionsDiscarded.csv";
 FileTool.WriteFile(questReactionsDiscardedFileName, discardedRows);
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 Console.WriteLine("Done. Press any key...");
 Console.ReadKey();
