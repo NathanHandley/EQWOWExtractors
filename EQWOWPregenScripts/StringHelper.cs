@@ -234,6 +234,26 @@ namespace EQWOWPregenScripts
             return workingText;
         }
 
+        static public string GetAddedMathPart(string text)
+        {
+            int minusIndex = text.IndexOf('-');
+            int plusIndex = text.IndexOf('+');
+
+            // Find the earliest occurrence of either symbol
+            int symbolIndex = -1;
+            if (minusIndex != -1 && plusIndex != -1)
+                symbolIndex = Math.Min(minusIndex, plusIndex);
+            else if (minusIndex != -1)
+                symbolIndex = minusIndex;
+            else if (plusIndex != -1)
+                symbolIndex = plusIndex;
+
+            // If a symbol was found, return it and everything after
+            if (symbolIndex != -1)
+                return text.Substring(symbolIndex).TrimStart().Replace(" ", "");
+            return string.Empty;
+        }
+
         static public List<string> ExtractMethodParameters(string inputLine, string methodName)
         {
             // Find the method call
@@ -378,19 +398,6 @@ namespace EQWOWPregenScripts
             return 0;
         }
 
-        //static public string GetTextVariableNameFromLine(string line)
-        //{
-        //    string[] lineBlocks = line.Replace("then", "").Trim().Split(",");
-        //    for (int i = 0; i < lineBlocks.Length; i++)
-        //    {
-        //        if (lineBlocks[i].Contains("text"))
-        //        {
-        //            return lineBlocks[i].Replace(")", "").Trim();
-        //        }
-        //    }
-        //    return string.Empty;
-        //}
-
         static public (string key, string value) GetLocalbleDataFromLine(string line)
         {
             (string key, string value) pairVariable = new (string.Empty, string.Empty);
@@ -401,6 +408,20 @@ namespace EQWOWPregenScripts
             pairVariable.key = workingLine.Split("=")[0].Trim();
             pairVariable.value = workingLine.Split("=")[1].Trim();
             return pairVariable;
+        }
+
+        public static string GetContentWithinOuterDelimeter(string text, string delimiter)
+        {
+            int firstQuote = text.IndexOf(delimiter);
+            int lastQuote = text.LastIndexOf(delimiter);
+
+            // Check if we found both quotes and they're not the same position
+            if (firstQuote != -1 && lastQuote != -1 && firstQuote != lastQuote)
+            {
+                // Extract substring starting after first quote to include everything up to last quote
+                return text.Substring(firstQuote + 1, lastQuote - firstQuote - 1);
+            }
+            return string.Empty;
         }
     }
 }
