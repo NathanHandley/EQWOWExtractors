@@ -118,216 +118,390 @@ using System.Text;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-// Condition reactions
-string questReactionsInputFileName = "E:\\ConverterData\\QuestReactionsInput.csv";
-List<Dictionary<string, string>> discardedRows = new List<Dictionary<string, string>>();
-List<QuestReaction> reactions = new List<QuestReaction>();
-List<Dictionary<string, string>> questReactionColumnRows = FileTool.ReadAllRowsFromFileWithHeader(questReactionsInputFileName, "|");
-foreach (Dictionary<string, string> questReactionColumns in questReactionColumnRows)
-{
-    int curReactionCount = reactions.Count;
-    QuestReaction curQuestReaction = new QuestReaction();
-    curQuestReaction.QuestID = int.Parse(questReactionColumns["wow_questid"]);
-    curQuestReaction.ZoneShortName = questReactionColumns["zone_shortname"];
-    curQuestReaction.QuestGiverName = questReactionColumns["questgiver_name"];
-    string reactionString = questReactionColumns["reaction"].Trim();
+// Condition reactions - Phase 1
+//string questReactionsInputFileName = "E:\\ConverterData\\QuestReactionsInput.csv";
+//List<Dictionary<string, string>> discardedRows = new List<Dictionary<string, string>>();
+//List<QuestReaction> reactions = new List<QuestReaction>();
+//List<Dictionary<string, string>> questReactionColumnRows = FileTool.ReadAllRowsFromFileWithHeader(questReactionsInputFileName, "|");
+//foreach (Dictionary<string, string> questReactionColumns in questReactionColumnRows)
+//{
+//    int curReactionCount = reactions.Count;
+//    QuestReaction curQuestReaction = new QuestReaction();
+//    curQuestReaction.QuestID = int.Parse(questReactionColumns["wow_questid"]);
+//    curQuestReaction.ZoneShortName = questReactionColumns["zone_shortname"];
+//    curQuestReaction.QuestGiverName = questReactionColumns["questgiver_name"];
+//    string reactionString = questReactionColumns["reaction"].Trim();
 
-    // Categorize
-    if (reactionString.Contains("e.self:Say(") || reactionString.Contains("e.other:Say("))
-    {
-        string formattedString = StringHelper.ConvertText(reactionString.Replace("e.self:Say(", "").Replace("e.other:Say(", ""));
-        curQuestReaction.ReactionType = "say";
-        curQuestReaction.ReactionValue1 = formattedString;
-        reactions.Add(curQuestReaction);
-    }
-    else if (reactionString.Contains("e.self:Shout("))
-    {
-        string formattedString = StringHelper.ConvertText(reactionString.Replace("e.self:Shout(", ""));
-        curQuestReaction.ReactionType = "yell";
-        curQuestReaction.ReactionValue1 = formattedString;
-        reactions.Add(curQuestReaction);
-    }
-    else if (reactionString.Contains("e.self:Emote"))
-    {
-        curQuestReaction.ReactionType = "emote";
-        string formattedString = StringHelper.ConvertText(reactionString.Replace("e.self:Emote(", ""));
-        curQuestReaction.ReactionValue1 = formattedString;
-        reactions.Add(curQuestReaction);
-    }
-    //else if (reactionString.StartsWith("eq.depop"))
-    //{
-    //    // eq.depop()
+//    // Categorize
+//    if (reactionString.Contains("e.self:Say(") || reactionString.Contains("e.other:Say("))
+//    {
+//        string formattedString = StringHelper.ConvertText(reactionString.Replace("e.self:Say(", "").Replace("e.other:Say(", ""));
+//        curQuestReaction.ReactionType = "say";
+//        curQuestReaction.ReactionValue1 = formattedString;
+//        reactions.Add(curQuestReaction);
+//    }
+//    else if (reactionString.Contains("e.self:Shout("))
+//    {
+//        string formattedString = StringHelper.ConvertText(reactionString.Replace("e.self:Shout(", ""));
+//        curQuestReaction.ReactionType = "yell";
+//        curQuestReaction.ReactionValue1 = formattedString;
+//        reactions.Add(curQuestReaction);
+//    }
+//    else if (reactionString.Contains("e.self:Emote"))
+//    {
+//        curQuestReaction.ReactionType = "emote";
+//        string formattedString = StringHelper.ConvertText(reactionString.Replace("e.self:Emote(", ""));
+//        curQuestReaction.ReactionValue1 = formattedString;
+//        reactions.Add(curQuestReaction);
+//    }
+//    else if (reactionString.StartsWith("eq.spawn2("))
+//    {
+//        curQuestReaction.ReactionType = "spawn";
+//        List<string> methodParameters = StringHelper.ExtractMethodParameters(reactionString, "eq.spawn2");
+//        curQuestReaction.ReactionValue1 = methodParameters[0];
+//        if (methodParameters[3].Contains("e.self:GetX("))
+//        {
+//            curQuestReaction.ReactionValue2 = "playerX";
+//            if (methodParameters[3].Contains("-") || methodParameters[3].Contains("+"))
+//                curQuestReaction.ReactionValue6 = StringHelper.GetAddedMathPart(methodParameters[3]);
+//        }
+//        else
+//            curQuestReaction.ReactionValue2 = methodParameters[3];
+//        if (methodParameters[4].Contains("e.self:GetY("))
+//        {
+//            curQuestReaction.ReactionValue3 = "playerY";
+//            if (methodParameters[4].Contains("-") || methodParameters[4].Contains("+"))
+//                curQuestReaction.ReactionValue7 = StringHelper.GetAddedMathPart(methodParameters[4]);
+//        }
+//        else
+//            curQuestReaction.ReactionValue3 = methodParameters[4];
+//        if (methodParameters[5].Contains("e.self:GetZ("))
+//        {
+//            curQuestReaction.ReactionValue4 = "playerZ";
+//            if (methodParameters[5].Contains("-") || methodParameters[5].Contains("+"))
+//                curQuestReaction.ReactionValue8 = StringHelper.GetAddedMathPart(methodParameters[5]);
+//        }
+//        else
+//            curQuestReaction.ReactionValue4 = methodParameters[5];
+//        if (methodParameters[6].Contains("e.self:GetHeading"))
+//            curQuestReaction.ReactionValue5 = "playerHeading";
+//        else
+//            curQuestReaction.ReactionValue5 = methodParameters[6];
+//        reactions.Add(curQuestReaction);
+//    }
+//    else if (reactionString.StartsWith("eq.unique_spawn("))
+//    {
+//        curQuestReaction.ReactionType = "spawnunique";
+//        List<string> methodParameters = StringHelper.ExtractMethodParameters(reactionString, "unique_spawn");
+//        curQuestReaction.ReactionValue1 = methodParameters[0];
+//        if (methodParameters[3].Contains("e.self:GetX("))
+//        {
+//            curQuestReaction.ReactionValue2 = "playerX";
+//            if (methodParameters[3].Contains("-") || methodParameters[3].Contains("+"))
+//                curQuestReaction.ReactionValue6 = StringHelper.GetAddedMathPart(methodParameters[3]);
+//        }
+//        else
+//            curQuestReaction.ReactionValue2 = methodParameters[3];
+//        if (methodParameters[4].Contains("e.self:GetY("))
+//        {
+//            curQuestReaction.ReactionValue3 = "playerY";
+//            if (methodParameters[4].Contains("-") || methodParameters[4].Contains("+"))
+//                curQuestReaction.ReactionValue7 = StringHelper.GetAddedMathPart(methodParameters[4]);
+//        }
+//        else
+//            curQuestReaction.ReactionValue3 = methodParameters[4];
+//        if (methodParameters[5].Contains("e.self:GetZ("))
+//        {
+//            curQuestReaction.ReactionValue4 = "playerZ";
+//            if (methodParameters[5].Contains("-") || methodParameters[5].Contains("+"))
+//                curQuestReaction.ReactionValue8 = StringHelper.GetAddedMathPart(methodParameters[5]);
+//        }
+//        else
+//            curQuestReaction.ReactionValue4 = methodParameters[5];
+//        if (methodParameters.Count > 6 && methodParameters[6].Contains("e.self:GetHeading"))
+//            curQuestReaction.ReactionValue5 = "playerHeading";
+//        else if (methodParameters.Count > 6)
+//            curQuestReaction.ReactionValue5 = methodParameters[6];
+//        reactions.Add(curQuestReaction);
+//    }
 
-    //    // eq.depop(15167); -- 15167 can be any number
+//    // Handle the inlined attack player
+//    if (reactionString.Contains("AddToHateList(e.other,1);") || reactionString.Contains("eq.attack(e.other:GetName())"))
+//    {
+//        QuestReaction attackReaction = new QuestReaction();
+//        attackReaction.QuestID = int.Parse(questReactionColumns["wow_questid"]);
+//        attackReaction.ZoneShortName = questReactionColumns["zone_shortname"];
+//        attackReaction.QuestGiverName = questReactionColumns["questgiver_name"];
+//        attackReaction.ReactionType = "attackplayer";
+//        reactions.Add(attackReaction);
+//    }
 
-    //    // eq.depop_all(116007); -- 116007 can be number
+//    if (reactionString.Contains("eq.depop()") || reactionString.Contains("eq.depop_with_timer()")) // TODO: Handle timer?
+//    {
+//        QuestReaction attackReaction = new QuestReaction();
+//        attackReaction.QuestID = int.Parse(questReactionColumns["wow_questid"]);
+//        attackReaction.ZoneShortName = questReactionColumns["zone_shortname"];
+//        attackReaction.QuestGiverName = questReactionColumns["questgiver_name"];
+//        attackReaction.ReactionType = "despawn";
+//        attackReaction.ReactionValue1 = "self";
+//        reactions.Add(attackReaction);
+//    }
+//    else if (reactionString.Contains("eq.follow(e.other:GetID());"))
+//    {
 
-    //    // eq.depop_with_timer()
+//    }
+//    else if (reactionString.Contains("eq.depop("))
+//    {
+//        QuestReaction despawnReaction = new QuestReaction();
+//        despawnReaction.QuestID = int.Parse(questReactionColumns["wow_questid"]);
+//        despawnReaction.ZoneShortName = questReactionColumns["zone_shortname"];
+//        despawnReaction.QuestGiverName = questReactionColumns["questgiver_name"];
+//        despawnReaction.ReactionType = "despawn";
+//        List<string> methodParameters = StringHelper.ExtractMethodParameters(reactionString, "depop");
+//        despawnReaction.ReactionValue1 = methodParameters[0];
+//        reactions.Add(despawnReaction);
+//    }
+//    else if (reactionString.Contains("eq.depop_with_timer(")) // TODO: Handle timer?
+//    {
+//        QuestReaction despawnReaction = new QuestReaction();
+//        despawnReaction.QuestID = int.Parse(questReactionColumns["wow_questid"]);
+//        despawnReaction.ZoneShortName = questReactionColumns["zone_shortname"];
+//        despawnReaction.QuestGiverName = questReactionColumns["questgiver_name"];
+//        despawnReaction.ReactionType = "despawn";
+//        List<string> methodParameters = StringHelper.ExtractMethodParameters(reactionString, "depop_with_timer");
+//        despawnReaction.ReactionValue1 = methodParameters[0];
+//        reactions.Add(despawnReaction);
+//    }
 
-    //    // eq.depop_with_timer(116063); -- 116063 can be number
-    //}
-    //else if (reactionString.StartsWith("eq.follow(e.other:GetID());"))
-    //{
-    //    // eq.move_to(-1581,-3682,-18,236,true); -- can be different numbers
-    //}
-    else if (reactionString.StartsWith("eq.spawn2("))
-    {
-        curQuestReaction.ReactionType = "spawn";
-        List<string> methodParameters = StringHelper.ExtractMethodParameters(reactionString, "eq.spawn2");
-        curQuestReaction.ReactionValue1 = methodParameters[0];
-        if (methodParameters[3].Contains("e.self:GetX("))
-        {
-            curQuestReaction.ReactionValue2 = "playerX";
-            if (methodParameters[3].Contains("-") || methodParameters[3].Contains("+"))
-                curQuestReaction.ReactionValue6 = StringHelper.GetAddedMathPart(methodParameters[3]);
-        }
-        else
-            curQuestReaction.ReactionValue2 = methodParameters[3];
-        if (methodParameters[4].Contains("e.self:GetY("))
-        {
-            curQuestReaction.ReactionValue3 = "playerY";
-            if (methodParameters[4].Contains("-") || methodParameters[4].Contains("+"))
-                curQuestReaction.ReactionValue7 = StringHelper.GetAddedMathPart(methodParameters[4]);
-        }
-        else
-            curQuestReaction.ReactionValue3 = methodParameters[4];
-        if (methodParameters[5].Contains("e.self:GetZ("))
-        {
-            curQuestReaction.ReactionValue4 = "playerZ";
-            if (methodParameters[5].Contains("-") || methodParameters[5].Contains("+"))
-                curQuestReaction.ReactionValue8 = StringHelper.GetAddedMathPart(methodParameters[5]);
-        }
-        else
-            curQuestReaction.ReactionValue4 = methodParameters[5];
-        if (methodParameters[6].Contains("e.self:GetHeading"))
-            curQuestReaction.ReactionValue5 = "playerHeading";
-        else
-            curQuestReaction.ReactionValue5 = methodParameters[6];
-        reactions.Add(curQuestReaction);
-    }
-    else if (reactionString.StartsWith("eq.unique_spawn("))
-    {
-        curQuestReaction.ReactionType = "spawnunique";
-        List<string> methodParameters = StringHelper.ExtractMethodParameters(reactionString, "unique_spawn");
-        curQuestReaction.ReactionValue1 = methodParameters[0];
-        if (methodParameters[3].Contains("e.self:GetX("))
-        {
-            curQuestReaction.ReactionValue2 = "playerX";
-            if (methodParameters[3].Contains("-") || methodParameters[3].Contains("+"))
-                curQuestReaction.ReactionValue6 = StringHelper.GetAddedMathPart(methodParameters[3]);
-        }
-        else
-            curQuestReaction.ReactionValue2 = methodParameters[3];
-        if (methodParameters[4].Contains("e.self:GetY("))
-        {
-            curQuestReaction.ReactionValue3 = "playerY";
-            if (methodParameters[4].Contains("-") || methodParameters[4].Contains("+"))
-                curQuestReaction.ReactionValue7 = StringHelper.GetAddedMathPart(methodParameters[4]);
-        }
-        else
-            curQuestReaction.ReactionValue3 = methodParameters[4];
-        if (methodParameters[5].Contains("e.self:GetZ("))
-        {
-            curQuestReaction.ReactionValue4 = "playerZ";
-            if (methodParameters[5].Contains("-") || methodParameters[5].Contains("+"))
-                curQuestReaction.ReactionValue8 = StringHelper.GetAddedMathPart(methodParameters[5]);
-        }
-        else
-            curQuestReaction.ReactionValue4 = methodParameters[5];
-        if (methodParameters.Count > 6 && methodParameters[6].Contains("e.self:GetHeading"))
-            curQuestReaction.ReactionValue5 = "playerHeading";
-        else if (methodParameters.Count > 6)
-            curQuestReaction.ReactionValue5 = methodParameters[6];
-        reactions.Add(curQuestReaction);
-    }
+//    // Everything else is discarded
+//    if (curReactionCount == reactions.Count)
+//    {
+//        Dictionary<string, string> discardedRow = new Dictionary<string, string>();
+//        discardedRow.Add("wow_questid", curQuestReaction.QuestID.ToString());
+//        discardedRow.Add("zone_shortname", curQuestReaction.ZoneShortName);
+//        discardedRow.Add("questgiver_name", curQuestReaction.QuestGiverName);
+//        discardedRow.Add("reaction", reactionString);
+//        discardedRows.Add(discardedRow);
+//    }
+//}
 
-    // Handle the inlined attack player
-    if (reactionString.Contains("AddToHateList(e.other,1);") || reactionString.Contains("eq.attack(e.other:GetName())"))
-    {
-        QuestReaction attackReaction = new QuestReaction();
-        attackReaction.QuestID = int.Parse(questReactionColumns["wow_questid"]);
-        attackReaction.ZoneShortName = questReactionColumns["zone_shortname"];
-        attackReaction.QuestGiverName = questReactionColumns["questgiver_name"];
-        attackReaction.ReactionType = "attackplayer";
-        reactions.Add(attackReaction);
-    }
+//// Write parsed rows
+//string questReactionsOutputFileName = "E:\\ConverterData\\QuestReactionsOutput.csv";
+//List<Dictionary<string, string>> outputReactionRows = new List<Dictionary<string, string>>();
+//foreach (QuestReaction reaction in reactions)
+//{
+//    Dictionary<string, string> outputReactionRow = new Dictionary<string, string>();
+//    outputReactionRow.Add("wow_questid", reaction.QuestID.ToString());
+//    outputReactionRow.Add("zone_shortname", reaction.ZoneShortName);
+//    outputReactionRow.Add("questgiver_name", reaction.QuestGiverName);
+//    outputReactionRow.Add("reaction_type", reaction.ReactionType);
+//    outputReactionRow.Add("reaction_value1", reaction.ReactionValue1);
+//    outputReactionRow.Add("reaction_value2", reaction.ReactionValue2);
+//    outputReactionRow.Add("reaction_value3", reaction.ReactionValue3);
+//    outputReactionRow.Add("reaction_value4", reaction.ReactionValue4);
+//    outputReactionRow.Add("reaction_value5", reaction.ReactionValue5);
+//    outputReactionRow.Add("reaction_value6", reaction.ReactionValue6);
+//    outputReactionRow.Add("reaction_value7", reaction.ReactionValue7);
+//    outputReactionRow.Add("reaction_value8", reaction.ReactionValue8);
+//    outputReactionRows.Add(outputReactionRow);
+//}
+//FileTool.WriteFile(questReactionsOutputFileName, outputReactionRows);
 
-    if (reactionString.Contains("eq.depop()") || reactionString.Contains("eq.depop_with_timer()")) // TODO: Handle timer?
-    {
-        QuestReaction attackReaction = new QuestReaction();
-        attackReaction.QuestID = int.Parse(questReactionColumns["wow_questid"]);
-        attackReaction.ZoneShortName = questReactionColumns["zone_shortname"];
-        attackReaction.QuestGiverName = questReactionColumns["questgiver_name"];
-        attackReaction.ReactionType = "despawn";
-        attackReaction.ReactionValue1 = "self";
-        reactions.Add(attackReaction);
-    }
-    else if (reactionString.Contains("eq.follow(e.other:GetID());"))
-    {
-
-    }
-    else if (reactionString.Contains("eq.depop("))
-    {
-        QuestReaction despawnReaction = new QuestReaction();
-        despawnReaction.QuestID = int.Parse(questReactionColumns["wow_questid"]);
-        despawnReaction.ZoneShortName = questReactionColumns["zone_shortname"];
-        despawnReaction.QuestGiverName = questReactionColumns["questgiver_name"];
-        despawnReaction.ReactionType = "despawn";
-        List<string> methodParameters = StringHelper.ExtractMethodParameters(reactionString, "depop");
-        despawnReaction.ReactionValue1 = methodParameters[0];
-        reactions.Add(despawnReaction);
-    }
-    else if (reactionString.Contains("eq.depop_with_timer(")) // TODO: Handle timer?
-    {
-        QuestReaction despawnReaction = new QuestReaction();
-        despawnReaction.QuestID = int.Parse(questReactionColumns["wow_questid"]);
-        despawnReaction.ZoneShortName = questReactionColumns["zone_shortname"];
-        despawnReaction.QuestGiverName = questReactionColumns["questgiver_name"];
-        despawnReaction.ReactionType = "despawn";
-        List<string> methodParameters = StringHelper.ExtractMethodParameters(reactionString, "depop_with_timer");
-        despawnReaction.ReactionValue1 = methodParameters[0];
-        reactions.Add(despawnReaction);
-    }
-
-    // Everything else is discarded
-    if (curReactionCount == reactions.Count)
-    {
-        Dictionary<string, string> discardedRow = new Dictionary<string, string>();
-        discardedRow.Add("wow_questid", curQuestReaction.QuestID.ToString());
-        discardedRow.Add("zone_shortname", curQuestReaction.ZoneShortName);
-        discardedRow.Add("questgiver_name", curQuestReaction.QuestGiverName);
-        discardedRow.Add("reaction", reactionString);
-        discardedRows.Add(discardedRow);
-    }
-}
-
-// Write parsed rows
-string questReactionsOutputFileName = "E:\\ConverterData\\QuestReactionsOutput.csv";
-List<Dictionary<string, string>> outputReactionRows = new List<Dictionary<string, string>>();
-foreach (QuestReaction reaction in reactions)
-{
-    Dictionary<string, string> outputReactionRow = new Dictionary<string, string>();
-    outputReactionRow.Add("wow_questid", reaction.QuestID.ToString());
-    outputReactionRow.Add("zone_shortname", reaction.ZoneShortName);
-    outputReactionRow.Add("questgiver_name", reaction.QuestGiverName);
-    outputReactionRow.Add("reaction_type", reaction.ReactionType);
-    outputReactionRow.Add("reaction_value1", reaction.ReactionValue1);
-    outputReactionRow.Add("reaction_value2", reaction.ReactionValue2);
-    outputReactionRow.Add("reaction_value3", reaction.ReactionValue3);
-    outputReactionRow.Add("reaction_value4", reaction.ReactionValue4);
-    outputReactionRow.Add("reaction_value5", reaction.ReactionValue5);
-    outputReactionRow.Add("reaction_value6", reaction.ReactionValue6);
-    outputReactionRow.Add("reaction_value7", reaction.ReactionValue7);
-    outputReactionRow.Add("reaction_value8", reaction.ReactionValue8);
-    outputReactionRows.Add(outputReactionRow);
-}
-FileTool.WriteFile(questReactionsOutputFileName, outputReactionRows);
-
-// Write discarded rows
-string questReactionsDiscardedFileName = "E:\\ConverterData\\QuestReactionsDiscarded.csv";
-FileTool.WriteFile(questReactionsDiscardedFileName, discardedRows);
+//// Write discarded rows
+//string questReactionsDiscardedFileName = "E:\\ConverterData\\QuestReactionsDiscarded.csv";
+//FileTool.WriteFile(questReactionsDiscardedFileName, discardedRows);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Condition reactions - Generate script lines
+
+// Load in lookups for creature templates
+string creatureTemplatesFile = "E:\\ConverterData\\CreatureTemplates.csv";
+Dictionary<string, Dictionary<string, string>> wowCreatureTemplateIDByCreatureNameByZones = new Dictionary<string, Dictionary<string, string>>();
+Dictionary<string, string> wowCreatureTemplateIDByEQID = new Dictionary<string, string>();
+Dictionary<string, string> wowCreatureNameByEQID = new Dictionary<string, string>();
+foreach (Dictionary<string, string> columns in FileTool.ReadAllRowsFromFileWithHeader(creatureTemplatesFile, "|"))
+{
+    string spawnZones = columns["spawnzones"];
+    if (wowCreatureTemplateIDByCreatureNameByZones.ContainsKey(spawnZones) == false)
+        wowCreatureTemplateIDByCreatureNameByZones.Add(spawnZones, new Dictionary<string, string>());
+    if (wowCreatureTemplateIDByCreatureNameByZones[spawnZones].ContainsKey(columns["name"]) == false)
+        wowCreatureTemplateIDByCreatureNameByZones[spawnZones].Add(columns["name"], columns["wow_id"]);
+    wowCreatureTemplateIDByEQID.Add(columns["eq_id"], columns["wow_id"]);
+    wowCreatureNameByEQID.Add(columns["eq_id"], columns["name"]);
+}
+
+static string GetPositionData(string coordinateBaseString, string playerIdentifierString, string playerCoordinatePartString, string coordinateAddString)
+{
+    string positionString = string.Empty;
+    if (coordinateBaseString != playerIdentifierString)
+    {
+        float positionValue = float.Parse(coordinateBaseString) * 0.29f;
+        if (coordinateAddString.Length > 0)
+            positionValue += float.Parse(coordinateAddString) * 0.29f;
+        positionValue = float.Round(positionValue, 2);
+        positionString = positionValue.ToString();
+    }
+    else
+    {
+        positionString = playerCoordinatePartString;
+        if (coordinateAddString.Length > 0)
+        {
+            float addStringValue = float.Round(float.Parse(coordinateAddString) * 0.29f, 2);
+            if (addStringValue > 0)
+                positionString += "+" + addStringValue.ToString();
+            else
+                positionString += addStringValue.ToString();
+        }
+    }
+    return positionString;
+}
+
+static string GetHeadingData(string reactionValue)
+{
+    if (reactionValue == "playerHeading")
+        return "orientation";
+    else if (reactionValue == "")
+        return "0";
+
+    float heading = float.Parse(reactionValue);
+    float modHeading = 0;
+    if (heading != 0)
+        modHeading = heading / (256f / 360f);
+    return Convert.ToString(modHeading * Convert.ToSingle(Math.PI / 180));
+}
+
+// Open the reactions file and make rows
+string questReactionsFile = "E:\\ConverterData\\QuestReactions.csv";
+List<Dictionary<string, string>> reactionsRows = FileTool.ReadAllRowsFromFileWithHeader(questReactionsFile, "|");
+List<string> outputScriptRows = new List<string>();
+List<string> unknownSpawnZoneRows = new List<string>();
+unknownSpawnZoneRows.Add("ZoneName|NPCName|WOWID");
+int curBaseQuestID = 0;
+foreach (Dictionary<string, string> columns in reactionsRows)
+{
+    // Skip anything that isn't a handled type
+    string reactionType = columns["reaction_type"];
+    if (reactionType != "despawn" && reactionType != "spawn" && reactionType != "spawnunique" && reactionType != "attackplayer")
+        continue;
+
+    // Make sure to make two rows for each quest ID
+    int questID = int.Parse(columns["wow_questid"]);
+    string zoneShortName = columns["zone_shortname"];
+    string npcName = columns["questgiver_name"];
+    string reactionValue1 = columns["reaction_value1"];
+    string reactionValue2 = columns["reaction_value2"];
+    string reactionValue3 = columns["reaction_value3"];
+    string reactionValue4 = columns["reaction_value4"];
+    string reactionValue5 = columns["reaction_value5"];
+    string reactionValue6 = columns["reaction_value6"];
+    string reactionValue7 = columns["reaction_value7"];
+    if (questID != curBaseQuestID)
+    {
+        if (curBaseQuestID != 0)
+            outputScriptRows.Add("}break;");
+        outputScriptRows.Add(string.Concat("case ", questID, ": // ", zoneShortName, " - ", npcName));
+        outputScriptRows.Add(string.Concat("case ", questID+5000, ": // Fallthrough - Repeat Quest"));      
+        outputScriptRows.Add("{");
+        curBaseQuestID = questID;
+    }
+
+    switch (reactionType)
+    {
+        case "despawn":
+            {
+                string creatureTemplateIDString = string.Empty;
+                if (reactionValue1 == "self")
+                {
+                    if (wowCreatureTemplateIDByCreatureNameByZones[zoneShortName].ContainsKey(npcName) == false)
+                    {
+                        creatureTemplateIDString = wowCreatureTemplateIDByCreatureNameByZones[""][npcName];
+                        unknownSpawnZoneRows.Add(string.Concat(zoneShortName, "|", npcName, "|", creatureTemplateIDString));
+                    }
+                    else
+                        creatureTemplateIDString = wowCreatureTemplateIDByCreatureNameByZones[zoneShortName][npcName];
+                }
+                else
+                    creatureTemplateIDString = wowCreatureTemplateIDByEQID[reactionValue1];
+                outputScriptRows.Add(string.Concat("EverQuest->DespawnCreature(", creatureTemplateIDString, ", map);"));
+            }
+            break;
+        case "spawn":
+            {
+                string creatureTemplateIDString = wowCreatureTemplateIDByEQID[reactionValue1];
+                string xPosition = GetPositionData(reactionValue3, "playerY", "x", reactionValue7); // Invert X and Y due to coordinate differences between games
+                string yPosition = GetPositionData(reactionValue2, "playerX", "y", reactionValue6); // Invert X and Y due to coordinate differences between games
+                string zPosition = GetPositionData(reactionValue4, "playerZ", "z", string.Empty);
+                string heading = GetHeadingData(reactionValue5);
+                StringBuilder sb = new StringBuilder();
+                sb.Append("EverQuest->SpawnCreature(");
+                sb.Append(creatureTemplateIDString);
+                sb.Append(", map, ");
+                sb.Append(xPosition);
+                sb.Append(", ");
+                sb.Append(yPosition);
+                sb.Append(", ");
+                sb.Append(zPosition);
+                sb.Append(", ");
+                sb.Append(heading);
+                sb.Append(", false);");
+                outputScriptRows.Add(sb.ToString());
+            }
+            break;
+        case "spawnunique":
+            {
+                string creatureTemplateIDString = wowCreatureTemplateIDByEQID[reactionValue1];
+                string xPosition = GetPositionData(reactionValue3, "playerY", "x", reactionValue7); // Invert X and Y due to coordinate differences between games
+                string yPosition = GetPositionData(reactionValue2, "playerX", "y", reactionValue6); // Invert X and Y due to coordinate differences between games
+                string zPosition = GetPositionData(reactionValue4, "playerZ", "z", string.Empty);
+                string heading = GetHeadingData(reactionValue5);
+                StringBuilder sb = new StringBuilder();
+                sb.Append("EverQuest->SpawnCreature(");
+                sb.Append(creatureTemplateIDString);
+                sb.Append(", map, ");
+                sb.Append(xPosition);
+                sb.Append(", ");
+                sb.Append(yPosition);
+                sb.Append(", ");
+                sb.Append(zPosition);
+                sb.Append(", ");
+                sb.Append(heading);
+                sb.Append(", true);");
+                outputScriptRows.Add(sb.ToString());
+            }
+            break;
+        case "attackplayer":
+            {
+                string creatureTemplateIDString = "";
+                if (wowCreatureTemplateIDByCreatureNameByZones[zoneShortName].ContainsKey(npcName) == false)
+                {
+                    creatureTemplateIDString = wowCreatureTemplateIDByCreatureNameByZones[""][npcName];
+                    unknownSpawnZoneRows.Add(string.Concat(zoneShortName, "|", npcName, "|", creatureTemplateIDString));
+                }
+                else
+                    creatureTemplateIDString = wowCreatureTemplateIDByCreatureNameByZones[zoneShortName][npcName];
+                outputScriptRows.Add(string.Concat("EverQuest->MakeCreatureAttackPlayer(", creatureTemplateIDString, ", map, player);"));
+            }
+            break;
+        default:
+            {
+                Console.WriteLine("Error");
+            }
+            break;
+    }
+}
+outputScriptRows.Add("}break;");
+
+string outputRowsFile = "E:\\ConverterData\\ScriptOutput.txt";
+using (var outputFile = new StreamWriter(outputRowsFile))
+    foreach (string outputLine in outputScriptRows)
+        outputFile.WriteLine(outputLine);
+
+string unknownSpawnZoneFile = "E:\\ConverterData\\UnknownSpawnZone.csv";
+using (var outputFile = new StreamWriter(unknownSpawnZoneFile))
+    foreach (string outputLine in unknownSpawnZoneRows)
+        outputFile.WriteLine(outputLine);
 
 Console.WriteLine("Done. Press any key...");
 Console.ReadKey();
