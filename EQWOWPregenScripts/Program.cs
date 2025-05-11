@@ -316,192 +316,238 @@ using System.Text;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Condition reactions - Generate script lines
 
-// Load in lookups for creature templates
-string creatureTemplatesFile = "E:\\ConverterData\\CreatureTemplates.csv";
-Dictionary<string, Dictionary<string, string>> wowCreatureTemplateIDByCreatureNameByZones = new Dictionary<string, Dictionary<string, string>>();
-Dictionary<string, string> wowCreatureTemplateIDByEQID = new Dictionary<string, string>();
-Dictionary<string, string> wowCreatureNameByEQID = new Dictionary<string, string>();
-foreach (Dictionary<string, string> columns in FileTool.ReadAllRowsFromFileWithHeader(creatureTemplatesFile, "|"))
-{
-    string spawnZones = columns["spawnzones"];
-    if (wowCreatureTemplateIDByCreatureNameByZones.ContainsKey(spawnZones) == false)
-        wowCreatureTemplateIDByCreatureNameByZones.Add(spawnZones, new Dictionary<string, string>());
-    if (wowCreatureTemplateIDByCreatureNameByZones[spawnZones].ContainsKey(columns["name"]) == false)
-        wowCreatureTemplateIDByCreatureNameByZones[spawnZones].Add(columns["name"], columns["wow_id"]);
-    wowCreatureTemplateIDByEQID.Add(columns["eq_id"], columns["wow_id"]);
-    wowCreatureNameByEQID.Add(columns["eq_id"], columns["name"]);
-}
+//// Load in lookups for creature templates
+//string creatureTemplatesFile = "E:\\ConverterData\\CreatureTemplates.csv";
+//Dictionary<string, Dictionary<string, string>> wowCreatureTemplateIDByCreatureNameByZones = new Dictionary<string, Dictionary<string, string>>();
+//Dictionary<string, string> wowCreatureTemplateIDByEQID = new Dictionary<string, string>();
+//Dictionary<string, string> wowCreatureNameByEQID = new Dictionary<string, string>();
+//foreach (Dictionary<string, string> columns in FileTool.ReadAllRowsFromFileWithHeader(creatureTemplatesFile, "|"))
+//{
+//    string spawnZones = columns["spawnzones"];
+//    if (wowCreatureTemplateIDByCreatureNameByZones.ContainsKey(spawnZones) == false)
+//        wowCreatureTemplateIDByCreatureNameByZones.Add(spawnZones, new Dictionary<string, string>());
+//    if (wowCreatureTemplateIDByCreatureNameByZones[spawnZones].ContainsKey(columns["name"]) == false)
+//        wowCreatureTemplateIDByCreatureNameByZones[spawnZones].Add(columns["name"], columns["wow_id"]);
+//    wowCreatureTemplateIDByEQID.Add(columns["eq_id"], columns["wow_id"]);
+//    wowCreatureNameByEQID.Add(columns["eq_id"], columns["name"]);
+//}
 
-static string GetPositionData(string coordinateBaseString, string playerIdentifierString, string playerCoordinatePartString, string coordinateAddString)
-{
-    string positionString = string.Empty;
-    if (coordinateBaseString != playerIdentifierString)
-    {
-        float positionValue = float.Parse(coordinateBaseString) * 0.29f;
-        if (coordinateAddString.Length > 0)
-            positionValue += float.Parse(coordinateAddString) * 0.29f;
-        positionValue = float.Round(positionValue, 2);
-        positionString = positionValue.ToString();
-    }
-    else
-    {
-        positionString = playerCoordinatePartString;
-        if (coordinateAddString.Length > 0)
-        {
-            float addStringValue = float.Round(float.Parse(coordinateAddString) * 0.29f, 2);
-            if (addStringValue > 0)
-                positionString += "+" + addStringValue.ToString();
-            else
-                positionString += addStringValue.ToString();
-        }
-    }
-    return positionString;
-}
+//static string GetPositionData(string coordinateBaseString, string playerIdentifierString, string playerCoordinatePartString, string coordinateAddString)
+//{
+//    string positionString = string.Empty;
+//    if (coordinateBaseString != playerIdentifierString)
+//    {
+//        float positionValue = float.Parse(coordinateBaseString) * 0.29f;
+//        if (coordinateAddString.Length > 0)
+//            positionValue += float.Parse(coordinateAddString) * 0.29f;
+//        positionValue = float.Round(positionValue, 2);
+//        positionString = positionValue.ToString();
+//    }
+//    else
+//    {
+//        positionString = playerCoordinatePartString;
+//        if (coordinateAddString.Length > 0)
+//        {
+//            float addStringValue = float.Round(float.Parse(coordinateAddString) * 0.29f, 2);
+//            if (addStringValue > 0)
+//                positionString += "+" + addStringValue.ToString();
+//            else
+//                positionString += addStringValue.ToString();
+//        }
+//    }
+//    return positionString;
+//}
 
-static string GetHeadingData(string reactionValue)
-{
-    if (reactionValue == "playerHeading")
-        return "orientation";
-    else if (reactionValue == "")
-        return "0";
+//static string GetHeadingData(string reactionValue)
+//{
+//    if (reactionValue == "playerHeading")
+//        return "orientation";
+//    else if (reactionValue == "")
+//        return "0";
 
-    float heading = float.Parse(reactionValue);
-    float modHeading = 0;
-    if (heading != 0)
-        modHeading = heading / (256f / 360f);
-    return Convert.ToString(modHeading * Convert.ToSingle(Math.PI / 180));
-}
+//    float heading = float.Parse(reactionValue);
+//    float modHeading = 0;
+//    if (heading != 0)
+//        modHeading = heading / (256f / 360f);
+//    return Convert.ToString(modHeading * Convert.ToSingle(Math.PI / 180));
+//}
 
-// Open the reactions file and make rows
+//// Open the reactions file and make rows
+//string questReactionsFile = "E:\\ConverterData\\QuestReactions.csv";
+//List<Dictionary<string, string>> reactionsRows = FileTool.ReadAllRowsFromFileWithHeader(questReactionsFile, "|");
+//List<string> outputScriptRows = new List<string>();
+//List<string> unknownSpawnZoneRows = new List<string>();
+//unknownSpawnZoneRows.Add("ZoneName|NPCName|WOWID");
+//int curBaseQuestID = 0;
+//foreach (Dictionary<string, string> columns in reactionsRows)
+//{
+//    // Skip anything that isn't a handled type
+//    string reactionType = columns["reaction_type"];
+//    if (reactionType != "despawn" && reactionType != "spawn" && reactionType != "spawnunique" && reactionType != "attackplayer")
+//        continue;
+
+//    // Make sure to make two rows for each quest ID
+//    int questID = int.Parse(columns["wow_questid"]);
+//    string zoneShortName = columns["zone_shortname"];
+//    string npcName = columns["questgiver_name"];
+//    string reactionValue1 = columns["reaction_value1"];
+//    string reactionValue2 = columns["reaction_value2"];
+//    string reactionValue3 = columns["reaction_value3"];
+//    string reactionValue4 = columns["reaction_value4"];
+//    string reactionValue5 = columns["reaction_value5"];
+//    string reactionValue6 = columns["reaction_value6"];
+//    string reactionValue7 = columns["reaction_value7"];
+//    if (questID != curBaseQuestID)
+//    {
+//        if (curBaseQuestID != 0)
+//            outputScriptRows.Add("}break;");
+//        outputScriptRows.Add(string.Concat("case ", questID, ": // ", zoneShortName, " - ", npcName));
+//        outputScriptRows.Add(string.Concat("case ", questID+5000, ": // Fallthrough - Repeat Quest"));      
+//        outputScriptRows.Add("{");
+//        curBaseQuestID = questID;
+//    }
+
+//    switch (reactionType)
+//    {
+//        case "despawn":
+//            {
+//                string creatureTemplateIDString = string.Empty;
+//                if (reactionValue1 == "self")
+//                {
+//                    if (wowCreatureTemplateIDByCreatureNameByZones[zoneShortName].ContainsKey(npcName) == false)
+//                    {
+//                        creatureTemplateIDString = wowCreatureTemplateIDByCreatureNameByZones[""][npcName];
+//                        unknownSpawnZoneRows.Add(string.Concat(zoneShortName, "|", npcName, "|", creatureTemplateIDString));
+//                    }
+//                    else
+//                        creatureTemplateIDString = wowCreatureTemplateIDByCreatureNameByZones[zoneShortName][npcName];
+//                }
+//                else
+//                    creatureTemplateIDString = wowCreatureTemplateIDByEQID[reactionValue1];
+//                outputScriptRows.Add(string.Concat("EverQuest->DespawnCreature(", creatureTemplateIDString, ", map);"));
+//            }
+//            break;
+//        case "spawn":
+//            {
+//                string creatureTemplateIDString = wowCreatureTemplateIDByEQID[reactionValue1];
+//                string xPosition = GetPositionData(reactionValue3, "playerY", "x", reactionValue7); // Invert X and Y due to coordinate differences between games
+//                string yPosition = GetPositionData(reactionValue2, "playerX", "y", reactionValue6); // Invert X and Y due to coordinate differences between games
+//                string zPosition = GetPositionData(reactionValue4, "playerZ", "z", string.Empty);
+//                string heading = GetHeadingData(reactionValue5);
+//                StringBuilder sb = new StringBuilder();
+//                sb.Append("EverQuest->SpawnCreature(");
+//                sb.Append(creatureTemplateIDString);
+//                sb.Append(", map, ");
+//                sb.Append(xPosition);
+//                sb.Append(", ");
+//                sb.Append(yPosition);
+//                sb.Append(", ");
+//                sb.Append(zPosition);
+//                sb.Append(", ");
+//                sb.Append(heading);
+//                sb.Append(", false);");
+//                outputScriptRows.Add(sb.ToString());
+//            }
+//            break;
+//        case "spawnunique":
+//            {
+//                string creatureTemplateIDString = wowCreatureTemplateIDByEQID[reactionValue1];
+//                string xPosition = GetPositionData(reactionValue3, "playerY", "x", reactionValue7); // Invert X and Y due to coordinate differences between games
+//                string yPosition = GetPositionData(reactionValue2, "playerX", "y", reactionValue6); // Invert X and Y due to coordinate differences between games
+//                string zPosition = GetPositionData(reactionValue4, "playerZ", "z", string.Empty);
+//                string heading = GetHeadingData(reactionValue5);
+//                StringBuilder sb = new StringBuilder();
+//                sb.Append("EverQuest->SpawnCreature(");
+//                sb.Append(creatureTemplateIDString);
+//                sb.Append(", map, ");
+//                sb.Append(xPosition);
+//                sb.Append(", ");
+//                sb.Append(yPosition);
+//                sb.Append(", ");
+//                sb.Append(zPosition);
+//                sb.Append(", ");
+//                sb.Append(heading);
+//                sb.Append(", true);");
+//                outputScriptRows.Add(sb.ToString());
+//            }
+//            break;
+//        case "attackplayer":
+//            {
+//                string creatureTemplateIDString = "";
+//                if (wowCreatureTemplateIDByCreatureNameByZones[zoneShortName].ContainsKey(npcName) == false)
+//                {
+//                    creatureTemplateIDString = wowCreatureTemplateIDByCreatureNameByZones[""][npcName];
+//                    unknownSpawnZoneRows.Add(string.Concat(zoneShortName, "|", npcName, "|", creatureTemplateIDString));
+//                }
+//                else
+//                    creatureTemplateIDString = wowCreatureTemplateIDByCreatureNameByZones[zoneShortName][npcName];
+//                outputScriptRows.Add(string.Concat("EverQuest->MakeCreatureAttackPlayer(", creatureTemplateIDString, ", map, player);"));
+//            }
+//            break;
+//        default:
+//            {
+//                Console.WriteLine("Error");
+//            }
+//            break;
+//    }
+//}
+//outputScriptRows.Add("}break;");
+
+//string outputRowsFile = "E:\\ConverterData\\ScriptOutput.txt";
+//using (var outputFile = new StreamWriter(outputRowsFile))
+//    foreach (string outputLine in outputScriptRows)
+//        outputFile.WriteLine(outputLine);
+
+//string unknownSpawnZoneFile = "E:\\ConverterData\\UnknownSpawnZone.csv";
+//using (var outputFile = new StreamWriter(unknownSpawnZoneFile))
+//    foreach (string outputLine in unknownSpawnZoneRows)
+//        outputFile.WriteLine(outputLine);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Populate creature templates with spawn zones for reaction spawns
+
+// Load reactions to grab spawn zones
 string questReactionsFile = "E:\\ConverterData\\QuestReactions.csv";
 List<Dictionary<string, string>> reactionsRows = FileTool.ReadAllRowsFromFileWithHeader(questReactionsFile, "|");
-List<string> outputScriptRows = new List<string>();
-List<string> unknownSpawnZoneRows = new List<string>();
-unknownSpawnZoneRows.Add("ZoneName|NPCName|WOWID");
-int curBaseQuestID = 0;
-foreach (Dictionary<string, string> columns in reactionsRows)
+Dictionary<string, List<string>> reactionSpawnZonesByCreatureEQID = new Dictionary<string, List<string>>();
+foreach (Dictionary<string, string> reactionColumns in reactionsRows)
 {
-    // Skip anything that isn't a handled type
-    string reactionType = columns["reaction_type"];
-    if (reactionType != "despawn" && reactionType != "spawn" && reactionType != "spawnunique" && reactionType != "attackplayer")
+    string reactionType = reactionColumns["reaction_type"];
+    if (reactionType != "spawn" && reactionType != "spawnunique")
         continue;
 
-    // Make sure to make two rows for each quest ID
-    int questID = int.Parse(columns["wow_questid"]);
-    string zoneShortName = columns["zone_shortname"];
-    string npcName = columns["questgiver_name"];
-    string reactionValue1 = columns["reaction_value1"];
-    string reactionValue2 = columns["reaction_value2"];
-    string reactionValue3 = columns["reaction_value3"];
-    string reactionValue4 = columns["reaction_value4"];
-    string reactionValue5 = columns["reaction_value5"];
-    string reactionValue6 = columns["reaction_value6"];
-    string reactionValue7 = columns["reaction_value7"];
-    if (questID != curBaseQuestID)
-    {
-        if (curBaseQuestID != 0)
-            outputScriptRows.Add("}break;");
-        outputScriptRows.Add(string.Concat("case ", questID, ": // ", zoneShortName, " - ", npcName));
-        outputScriptRows.Add(string.Concat("case ", questID+5000, ": // Fallthrough - Repeat Quest"));      
-        outputScriptRows.Add("{");
-        curBaseQuestID = questID;
-    }
+    string eqID = reactionColumns["reaction_value1"];
+    string zoneShortName = reactionColumns["zone_shortname"];
+    if (reactionSpawnZonesByCreatureEQID.ContainsKey(eqID) == false)
+        reactionSpawnZonesByCreatureEQID.Add(eqID, new List<string>());
+    if (reactionSpawnZonesByCreatureEQID[eqID].Contains(zoneShortName) == false)
+        reactionSpawnZonesByCreatureEQID[eqID].Add(zoneShortName);
+}
 
-    switch (reactionType)
+// Load in lookups for creature templates
+string creatureTemplatesFile = "E:\\ConverterData\\CreatureTemplates.csv";
+List<Dictionary<string, string>> columns = FileTool.ReadAllRowsFromFileWithHeader(creatureTemplatesFile, "|");
+for (int i = 0; i < columns.Count; i++)
+{
+    string eqId = columns[i]["eq_id"].Trim();
+    if (reactionSpawnZonesByCreatureEQID.ContainsKey(eqId))
     {
-        case "despawn":
+        string creatureSpawnZones = columns[i]["spawnzones"];
+        foreach (string reactionSpawnZone in reactionSpawnZonesByCreatureEQID[eqId])
+        {
+            if (creatureSpawnZones.Contains(reactionSpawnZone) == false)
             {
-                string creatureTemplateIDString = string.Empty;
-                if (reactionValue1 == "self")
-                {
-                    if (wowCreatureTemplateIDByCreatureNameByZones[zoneShortName].ContainsKey(npcName) == false)
-                    {
-                        creatureTemplateIDString = wowCreatureTemplateIDByCreatureNameByZones[""][npcName];
-                        unknownSpawnZoneRows.Add(string.Concat(zoneShortName, "|", npcName, "|", creatureTemplateIDString));
-                    }
-                    else
-                        creatureTemplateIDString = wowCreatureTemplateIDByCreatureNameByZones[zoneShortName][npcName];
-                }
-                else
-                    creatureTemplateIDString = wowCreatureTemplateIDByEQID[reactionValue1];
-                outputScriptRows.Add(string.Concat("EverQuest->DespawnCreature(", creatureTemplateIDString, ", map);"));
+                if (creatureSpawnZones.Length > 0)
+                    creatureSpawnZones += ",";
+                creatureSpawnZones += reactionSpawnZone;
             }
-            break;
-        case "spawn":
-            {
-                string creatureTemplateIDString = wowCreatureTemplateIDByEQID[reactionValue1];
-                string xPosition = GetPositionData(reactionValue3, "playerY", "x", reactionValue7); // Invert X and Y due to coordinate differences between games
-                string yPosition = GetPositionData(reactionValue2, "playerX", "y", reactionValue6); // Invert X and Y due to coordinate differences between games
-                string zPosition = GetPositionData(reactionValue4, "playerZ", "z", string.Empty);
-                string heading = GetHeadingData(reactionValue5);
-                StringBuilder sb = new StringBuilder();
-                sb.Append("EverQuest->SpawnCreature(");
-                sb.Append(creatureTemplateIDString);
-                sb.Append(", map, ");
-                sb.Append(xPosition);
-                sb.Append(", ");
-                sb.Append(yPosition);
-                sb.Append(", ");
-                sb.Append(zPosition);
-                sb.Append(", ");
-                sb.Append(heading);
-                sb.Append(", false);");
-                outputScriptRows.Add(sb.ToString());
-            }
-            break;
-        case "spawnunique":
-            {
-                string creatureTemplateIDString = wowCreatureTemplateIDByEQID[reactionValue1];
-                string xPosition = GetPositionData(reactionValue3, "playerY", "x", reactionValue7); // Invert X and Y due to coordinate differences between games
-                string yPosition = GetPositionData(reactionValue2, "playerX", "y", reactionValue6); // Invert X and Y due to coordinate differences between games
-                string zPosition = GetPositionData(reactionValue4, "playerZ", "z", string.Empty);
-                string heading = GetHeadingData(reactionValue5);
-                StringBuilder sb = new StringBuilder();
-                sb.Append("EverQuest->SpawnCreature(");
-                sb.Append(creatureTemplateIDString);
-                sb.Append(", map, ");
-                sb.Append(xPosition);
-                sb.Append(", ");
-                sb.Append(yPosition);
-                sb.Append(", ");
-                sb.Append(zPosition);
-                sb.Append(", ");
-                sb.Append(heading);
-                sb.Append(", true);");
-                outputScriptRows.Add(sb.ToString());
-            }
-            break;
-        case "attackplayer":
-            {
-                string creatureTemplateIDString = "";
-                if (wowCreatureTemplateIDByCreatureNameByZones[zoneShortName].ContainsKey(npcName) == false)
-                {
-                    creatureTemplateIDString = wowCreatureTemplateIDByCreatureNameByZones[""][npcName];
-                    unknownSpawnZoneRows.Add(string.Concat(zoneShortName, "|", npcName, "|", creatureTemplateIDString));
-                }
-                else
-                    creatureTemplateIDString = wowCreatureTemplateIDByCreatureNameByZones[zoneShortName][npcName];
-                outputScriptRows.Add(string.Concat("EverQuest->MakeCreatureAttackPlayer(", creatureTemplateIDString, ", map, player);"));
-            }
-            break;
-        default:
-            {
-                Console.WriteLine("Error");
-            }
-            break;
+        }
+        columns[i]["spawnzones"] = creatureSpawnZones;
     }
 }
-outputScriptRows.Add("}break;");
 
-string outputRowsFile = "E:\\ConverterData\\ScriptOutput.txt";
-using (var outputFile = new StreamWriter(outputRowsFile))
-    foreach (string outputLine in outputScriptRows)
-        outputFile.WriteLine(outputLine);
-
-string unknownSpawnZoneFile = "E:\\ConverterData\\UnknownSpawnZone.csv";
-using (var outputFile = new StreamWriter(unknownSpawnZoneFile))
-    foreach (string outputLine in unknownSpawnZoneRows)
-        outputFile.WriteLine(outputLine);
+string creatureTemplatesWithUpdatesFile = "E:\\ConverterData\\CreatureTemplatesWithUpdates.csv";
+FileTool.WriteFile(creatureTemplatesWithUpdatesFile, columns);
 
 Console.WriteLine("Done. Press any key...");
 Console.ReadKey();
