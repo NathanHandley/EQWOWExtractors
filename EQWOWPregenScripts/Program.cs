@@ -507,47 +507,159 @@ using System.Text;
 // Populate creature templates with spawn zones for reaction spawns
 
 // Load reactions to grab spawn zones
-string questReactionsFile = "E:\\ConverterData\\QuestReactions.csv";
-List<Dictionary<string, string>> reactionsRows = FileTool.ReadAllRowsFromFileWithHeader(questReactionsFile, "|");
-Dictionary<string, List<string>> reactionSpawnZonesByCreatureEQID = new Dictionary<string, List<string>>();
-foreach (Dictionary<string, string> reactionColumns in reactionsRows)
-{
-    string reactionType = reactionColumns["reaction_type"];
-    if (reactionType != "spawn" && reactionType != "spawnunique")
-        continue;
+//string questReactionsFile = "E:\\ConverterData\\QuestReactions.csv";
+//List<Dictionary<string, string>> reactionsRows = FileTool.ReadAllRowsFromFileWithHeader(questReactionsFile, "|");
+//Dictionary<string, List<string>> reactionSpawnZonesByCreatureEQID = new Dictionary<string, List<string>>();
+//foreach (Dictionary<string, string> reactionColumns in reactionsRows)
+//{
+//    string reactionType = reactionColumns["reaction_type"];
+//    if (reactionType != "spawn" && reactionType != "spawnunique")
+//        continue;
 
-    string eqID = reactionColumns["reaction_value1"];
-    string zoneShortName = reactionColumns["zone_shortname"];
-    if (reactionSpawnZonesByCreatureEQID.ContainsKey(eqID) == false)
-        reactionSpawnZonesByCreatureEQID.Add(eqID, new List<string>());
-    if (reactionSpawnZonesByCreatureEQID[eqID].Contains(zoneShortName) == false)
-        reactionSpawnZonesByCreatureEQID[eqID].Add(zoneShortName);
+//    string eqID = reactionColumns["reaction_value1"];
+//    string zoneShortName = reactionColumns["zone_shortname"];
+//    if (reactionSpawnZonesByCreatureEQID.ContainsKey(eqID) == false)
+//        reactionSpawnZonesByCreatureEQID.Add(eqID, new List<string>());
+//    if (reactionSpawnZonesByCreatureEQID[eqID].Contains(zoneShortName) == false)
+//        reactionSpawnZonesByCreatureEQID[eqID].Add(zoneShortName);
+//}
+
+//// Load in lookups for creature templates
+//string creatureTemplatesFile = "E:\\ConverterData\\CreatureTemplates.csv";
+//List<Dictionary<string, string>> columns = FileTool.ReadAllRowsFromFileWithHeader(creatureTemplatesFile, "|");
+//for (int i = 0; i < columns.Count; i++)
+//{
+//    string eqId = columns[i]["eq_id"].Trim();
+//    if (reactionSpawnZonesByCreatureEQID.ContainsKey(eqId))
+//    {
+//        string creatureSpawnZones = columns[i]["spawnzones"];
+//        foreach (string reactionSpawnZone in reactionSpawnZonesByCreatureEQID[eqId])
+//        {
+//            if (creatureSpawnZones.Contains(reactionSpawnZone) == false)
+//            {
+//                if (creatureSpawnZones.Length > 0)
+//                    creatureSpawnZones += ",";
+//                creatureSpawnZones += reactionSpawnZone;
+//            }
+//        }
+//        columns[i]["spawnzones"] = creatureSpawnZones;
+//    }
+//}
+
+//string creatureTemplatesWithUpdatesFile = "E:\\ConverterData\\CreatureTemplatesWithUpdates.csv";
+//FileTool.WriteFile(creatureTemplatesWithUpdatesFile, columns);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Identify and mark creature templates that are invalid for the project
+
+// Read in NPC-group relationships and if the expansion is valid
+Dictionary<int, List<int>> eqNPCIDsByGroupID = new Dictionary<int, List<int>>();
+Dictionary<int, List<int>> groupIDsByEQNPCID = new Dictionary<int, List<int>>();
+Dictionary<int, bool> isExpansionValidByGroupID = new Dictionary<int, bool>();
+string spawnEntriesFile = "E:\\ConverterData\\SpawnEntries.csv";
+List<Dictionary<string, string>> spawnEntriesRows = FileTool.ReadAllRowsFromFileWithHeader(spawnEntriesFile, "|");
+foreach (Dictionary<string, string> spawnEntriesColumn in spawnEntriesRows)
+{
+    int spawnGroupID = int.Parse(spawnEntriesColumn["spawngroupID"]);
+    int npcID = int.Parse(spawnEntriesColumn["npcID"]);
+    //if (npcID == 72103)
+    //{
+    //    int x = 5;
+    //    int y = 5;
+    //}
+    if (spawnGroupID == 222432)
+    {
+        int x = 5;
+        int y = 5;
+    }
+
+    // Group ID container
+    if (eqNPCIDsByGroupID.ContainsKey(spawnGroupID) == false)
+        eqNPCIDsByGroupID.Add(spawnGroupID, new List<int>());
+    eqNPCIDsByGroupID[spawnGroupID].Add(npcID);
+
+    if (groupIDsByEQNPCID.ContainsKey(npcID) == false)
+        groupIDsByEQNPCID.Add(npcID, new List<int>());
+    groupIDsByEQNPCID[npcID].Add(spawnGroupID);
+
+    //// Expansion
+    //int minExpansionID = int.Parse(spawnEntriesColumn["min_expansion"]);
+    //bool isExpansionValid = (minExpansionID <= 2);
+    //if (isExpansionValidByGroupID.ContainsKey(spawnGroupID) == false)
+    //    isExpansionValidByGroupID[spawnGroupID] = isExpansionValid;
+    //else if (isExpansionValid == false)
+    //    isExpansionValidByGroupID[spawnGroupID] = true;
 }
 
-// Load in lookups for creature templates
-string creatureTemplatesFile = "E:\\ConverterData\\CreatureTemplates.csv";
-List<Dictionary<string, string>> columns = FileTool.ReadAllRowsFromFileWithHeader(creatureTemplatesFile, "|");
-for (int i = 0; i < columns.Count; i++)
+string spawnInstancesFile = "E:\\ConverterData\\SpawnInstances.csv";
+List<Dictionary<string, string>> spawnInstancesRows = FileTool.ReadAllRowsFromFileWithHeader(spawnInstancesFile, "|");
+foreach (Dictionary<string, string> spawnInstancesRow in spawnInstancesRows)
 {
-    string eqId = columns[i]["eq_id"].Trim();
-    if (reactionSpawnZonesByCreatureEQID.ContainsKey(eqId))
+    int spawnGroupID = int.Parse(spawnInstancesRow["spawngroupid"]);
+    int minExpansionID = int.Parse(spawnInstancesRow["min_expansion"]);
+    bool isExpansionValid = (minExpansionID <= 2);
+    if (isExpansionValidByGroupID.ContainsKey(spawnGroupID) == false)
+        isExpansionValidByGroupID[spawnGroupID] = isExpansionValid;
+    else if (isExpansionValid == false)
+        isExpansionValidByGroupID[spawnGroupID] = true;
+
+
+
+    //int npcID = int.Parse(spawnEntriesColumn["npcID"]);
+    ////if (npcID == 72103)
+    ////{
+    ////    int x = 5;
+    ////    int y = 5;
+    ////}
+    //if (spawnGroupID == 222432)
+    //{
+    //    int x = 5;
+    //    int y = 5;
+    //}
+
+    //// Group ID container
+    //if (eqNPCIDsByGroupID.ContainsKey(spawnGroupID) == false)
+    //    eqNPCIDsByGroupID.Add(spawnGroupID, new List<int>());
+    //eqNPCIDsByGroupID[spawnGroupID].Add(npcID);
+
+    //if (groupIDsByEQNPCID.ContainsKey(npcID) == false)
+    //    groupIDsByEQNPCID.Add(npcID, new List<int>());
+    //groupIDsByEQNPCID[npcID].Add(spawnGroupID);
+
+    //// Expansion
+
+}
+
+// Update the creature templates
+string creatureTemplatesFile = "E:\\ConverterData\\CreatureTemplates.csv";
+List<Dictionary<string, string>> creatureTemplatesRows = FileTool.ReadAllRowsFromFileWithHeader(creatureTemplatesFile, "|");
+foreach(Dictionary<string, string> creatureTemplateColumn in creatureTemplatesRows)
+{
+    // Update the column if this should be deleted
+    int npcID = int.Parse(creatureTemplateColumn["eq_id"]);
+    if (npcID == 72103)
     {
-        string creatureSpawnZones = columns[i]["spawnzones"];
-        foreach (string reactionSpawnZone in reactionSpawnZonesByCreatureEQID[eqId])
-        {
-            if (creatureSpawnZones.Contains(reactionSpawnZone) == false)
-            {
-                if (creatureSpawnZones.Length > 0)
-                    creatureSpawnZones += ",";
-                creatureSpawnZones += reactionSpawnZone;
-            }
-        }
-        columns[i]["spawnzones"] = creatureSpawnZones;
+        int x = 5;
+        int y = 5;
     }
+    bool hasValidInstance = false;
+    bool hasInvalidInstance = false;
+    if (groupIDsByEQNPCID.ContainsKey(npcID) == true)
+    {
+        foreach (int groupID in groupIDsByEQNPCID[npcID])
+        {
+            if (isExpansionValidByGroupID.ContainsKey(groupID) && isExpansionValidByGroupID[groupID])
+                hasValidInstance = true;
+            else
+                hasInvalidInstance = true;
+        }
+    }
+    creatureTemplateColumn["ValidInstances"] = hasValidInstance ? "1" : "0";
+    creatureTemplateColumn["InvalidInstances"] = hasInvalidInstance ? "1" : "0";
 }
 
 string creatureTemplatesWithUpdatesFile = "E:\\ConverterData\\CreatureTemplatesWithUpdates.csv";
-FileTool.WriteFile(creatureTemplatesWithUpdatesFile, columns);
+FileTool.WriteFile(creatureTemplatesWithUpdatesFile, creatureTemplatesRows);
 
 Console.WriteLine("Done. Press any key...");
 Console.ReadKey();
