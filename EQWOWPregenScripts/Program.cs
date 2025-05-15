@@ -553,113 +553,262 @@ using System.Text;
 // Identify and mark creature templates that are invalid for the project
 
 // Read in NPC-group relationships and if the expansion is valid
-Dictionary<int, List<int>> eqNPCIDsByGroupID = new Dictionary<int, List<int>>();
-Dictionary<int, List<int>> groupIDsByEQNPCID = new Dictionary<int, List<int>>();
-Dictionary<int, bool> isExpansionValidByGroupID = new Dictionary<int, bool>();
-string spawnEntriesFile = "E:\\ConverterData\\SpawnEntries.csv";
-List<Dictionary<string, string>> spawnEntriesRows = FileTool.ReadAllRowsFromFileWithHeader(spawnEntriesFile, "|");
-foreach (Dictionary<string, string> spawnEntriesColumn in spawnEntriesRows)
+//Dictionary<int, List<int>> eqNPCIDsByGroupID = new Dictionary<int, List<int>>();
+//Dictionary<int, List<int>> groupIDsByEQNPCID = new Dictionary<int, List<int>>();
+//Dictionary<int, bool> isExpansionValidByGroupID = new Dictionary<int, bool>();
+//string spawnEntriesFile = "E:\\ConverterData\\SpawnEntries.csv";
+//List<Dictionary<string, string>> spawnEntriesRows = FileTool.ReadAllRowsFromFileWithHeader(spawnEntriesFile, "|");
+//foreach (Dictionary<string, string> spawnEntriesColumn in spawnEntriesRows)
+//{
+//    int spawnGroupID = int.Parse(spawnEntriesColumn["spawngroupID"]);
+//    int npcID = int.Parse(spawnEntriesColumn["npcID"]);
+//    //if (npcID == 72103)
+//    //{
+//    //    int x = 5;
+//    //    int y = 5;
+//    //}
+//    if (spawnGroupID == 222432)
+//    {
+//        int x = 5;
+//        int y = 5;
+//    }
+
+//    // Group ID container
+//    if (eqNPCIDsByGroupID.ContainsKey(spawnGroupID) == false)
+//        eqNPCIDsByGroupID.Add(spawnGroupID, new List<int>());
+//    eqNPCIDsByGroupID[spawnGroupID].Add(npcID);
+
+//    if (groupIDsByEQNPCID.ContainsKey(npcID) == false)
+//        groupIDsByEQNPCID.Add(npcID, new List<int>());
+//    groupIDsByEQNPCID[npcID].Add(spawnGroupID);
+
+//    //// Expansion
+//    //int minExpansionID = int.Parse(spawnEntriesColumn["min_expansion"]);
+//    //bool isExpansionValid = (minExpansionID <= 2);
+//    //if (isExpansionValidByGroupID.ContainsKey(spawnGroupID) == false)
+//    //    isExpansionValidByGroupID[spawnGroupID] = isExpansionValid;
+//    //else if (isExpansionValid == false)
+//    //    isExpansionValidByGroupID[spawnGroupID] = true;
+//}
+
+//string spawnInstancesFile = "E:\\ConverterData\\SpawnInstances.csv";
+//List<Dictionary<string, string>> spawnInstancesRows = FileTool.ReadAllRowsFromFileWithHeader(spawnInstancesFile, "|");
+//foreach (Dictionary<string, string> spawnInstancesRow in spawnInstancesRows)
+//{
+//    int spawnGroupID = int.Parse(spawnInstancesRow["spawngroupid"]);
+//    int minExpansionID = int.Parse(spawnInstancesRow["min_expansion"]);
+//    bool isExpansionValid = (minExpansionID <= 2);
+//    if (isExpansionValidByGroupID.ContainsKey(spawnGroupID) == false)
+//        isExpansionValidByGroupID[spawnGroupID] = isExpansionValid;
+//    else if (isExpansionValid == false)
+//        isExpansionValidByGroupID[spawnGroupID] = true;
+
+
+
+//    //int npcID = int.Parse(spawnEntriesColumn["npcID"]);
+//    ////if (npcID == 72103)
+//    ////{
+//    ////    int x = 5;
+//    ////    int y = 5;
+//    ////}
+//    //if (spawnGroupID == 222432)
+//    //{
+//    //    int x = 5;
+//    //    int y = 5;
+//    //}
+
+//    //// Group ID container
+//    //if (eqNPCIDsByGroupID.ContainsKey(spawnGroupID) == false)
+//    //    eqNPCIDsByGroupID.Add(spawnGroupID, new List<int>());
+//    //eqNPCIDsByGroupID[spawnGroupID].Add(npcID);
+
+//    //if (groupIDsByEQNPCID.ContainsKey(npcID) == false)
+//    //    groupIDsByEQNPCID.Add(npcID, new List<int>());
+//    //groupIDsByEQNPCID[npcID].Add(spawnGroupID);
+
+//    //// Expansion
+
+//}
+
+//// Update the creature templates
+//string creatureTemplatesFile = "E:\\ConverterData\\CreatureTemplates.csv";
+//List<Dictionary<string, string>> creatureTemplatesRows = FileTool.ReadAllRowsFromFileWithHeader(creatureTemplatesFile, "|");
+//foreach(Dictionary<string, string> creatureTemplateColumn in creatureTemplatesRows)
+//{
+//    // Update the column if this should be deleted
+//    int npcID = int.Parse(creatureTemplateColumn["eq_id"]);
+//    if (npcID == 72103)
+//    {
+//        int x = 5;
+//        int y = 5;
+//    }
+//    bool hasValidInstance = false;
+//    bool hasInvalidInstance = false;
+//    if (groupIDsByEQNPCID.ContainsKey(npcID) == true)
+//    {
+//        foreach (int groupID in groupIDsByEQNPCID[npcID])
+//        {
+//            if (isExpansionValidByGroupID.ContainsKey(groupID) && isExpansionValidByGroupID[groupID])
+//                hasValidInstance = true;
+//            else
+//                hasInvalidInstance = true;
+//        }
+//    }
+//    creatureTemplateColumn["ValidInstances"] = hasValidInstance ? "1" : "0";
+//    creatureTemplateColumn["InvalidInstances"] = hasInvalidInstance ? "1" : "0";
+//}
+
+//string creatureTemplatesWithUpdatesFile = "E:\\ConverterData\\CreatureTemplatesWithUpdates.csv";
+//FileTool.WriteFile(creatureTemplatesWithUpdatesFile, creatureTemplatesRows);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+// Convert tradeskills into a flattened list
+
+// Get the item lookup
+Dictionary<string, string> itemNamesByEQID = new Dictionary<string, string>();
+Dictionary<string, int> itemMaxChangesByEQID = new Dictionary<string, int>();
+string itemFile = "E:\\ConverterData\\ItemTemplates.csv";
+List<Dictionary<string, string>> itemFileRows = FileTool.ReadAllRowsFromFileWithHeader(itemFile, "|");
+foreach (Dictionary<string, string> itemFileColumns in itemFileRows)
 {
-    int spawnGroupID = int.Parse(spawnEntriesColumn["spawngroupID"]);
-    int npcID = int.Parse(spawnEntriesColumn["npcID"]);
-    //if (npcID == 72103)
-    //{
-    //    int x = 5;
-    //    int y = 5;
-    //}
-    if (spawnGroupID == 222432)
-    {
-        int x = 5;
-        int y = 5;
-    }
-
-    // Group ID container
-    if (eqNPCIDsByGroupID.ContainsKey(spawnGroupID) == false)
-        eqNPCIDsByGroupID.Add(spawnGroupID, new List<int>());
-    eqNPCIDsByGroupID[spawnGroupID].Add(npcID);
-
-    if (groupIDsByEQNPCID.ContainsKey(npcID) == false)
-        groupIDsByEQNPCID.Add(npcID, new List<int>());
-    groupIDsByEQNPCID[npcID].Add(spawnGroupID);
-
-    //// Expansion
-    //int minExpansionID = int.Parse(spawnEntriesColumn["min_expansion"]);
-    //bool isExpansionValid = (minExpansionID <= 2);
-    //if (isExpansionValidByGroupID.ContainsKey(spawnGroupID) == false)
-    //    isExpansionValidByGroupID[spawnGroupID] = isExpansionValid;
-    //else if (isExpansionValid == false)
-    //    isExpansionValidByGroupID[spawnGroupID] = true;
+    itemNamesByEQID.Add(itemFileColumns["id"], itemFileColumns["Name"]);
+    itemMaxChangesByEQID.Add(itemFileColumns["id"], int.Parse(itemFileColumns["maxcharges"]));
 }
 
-string spawnInstancesFile = "E:\\ConverterData\\SpawnInstances.csv";
-List<Dictionary<string, string>> spawnInstancesRows = FileTool.ReadAllRowsFromFileWithHeader(spawnInstancesFile, "|");
-foreach (Dictionary<string, string> spawnInstancesRow in spawnInstancesRows)
+// Read the recipes
+string tradeskillRecipesFile = "E:\\ConverterData\\Tradeskill_Recipe.csv";
+List<Dictionary<string, string>> tradeskillRecipeRows = FileTool.ReadAllRowsFromFileWithHeader(tradeskillRecipesFile, "|");
+Dictionary<string, TradeskillRecipe> recipesByID = new Dictionary<string, TradeskillRecipe>();
+foreach (Dictionary<string, string> tradeskillRecipeColumns in tradeskillRecipeRows)
 {
-    int spawnGroupID = int.Parse(spawnInstancesRow["spawngroupid"]);
-    int minExpansionID = int.Parse(spawnInstancesRow["min_expansion"]);
-    bool isExpansionValid = (minExpansionID <= 2);
-    if (isExpansionValidByGroupID.ContainsKey(spawnGroupID) == false)
-        isExpansionValidByGroupID[spawnGroupID] = isExpansionValid;
-    else if (isExpansionValid == false)
-        isExpansionValidByGroupID[spawnGroupID] = true;
-
-
-
-    //int npcID = int.Parse(spawnEntriesColumn["npcID"]);
-    ////if (npcID == 72103)
-    ////{
-    ////    int x = 5;
-    ////    int y = 5;
-    ////}
-    //if (spawnGroupID == 222432)
-    //{
-    //    int x = 5;
-    //    int y = 5;
-    //}
-
-    //// Group ID container
-    //if (eqNPCIDsByGroupID.ContainsKey(spawnGroupID) == false)
-    //    eqNPCIDsByGroupID.Add(spawnGroupID, new List<int>());
-    //eqNPCIDsByGroupID[spawnGroupID].Add(npcID);
-
-    //if (groupIDsByEQNPCID.ContainsKey(npcID) == false)
-    //    groupIDsByEQNPCID.Add(npcID, new List<int>());
-    //groupIDsByEQNPCID[npcID].Add(spawnGroupID);
-
-    //// Expansion
-
+    TradeskillRecipe recipe = new TradeskillRecipe();
+    recipe.EQRecipeID = tradeskillRecipeColumns["id"];
+    recipe.RecipeName = tradeskillRecipeColumns["name"];
+    recipe.RecipeOriginalName = tradeskillRecipeColumns["name"];
+    recipe.EQTradeskillID = tradeskillRecipeColumns["tradeskill"];
+    recipe.SkillNeeded = tradeskillRecipeColumns["skillneeded"];
+    recipe.Trivial = tradeskillRecipeColumns["trivial"];
+    recipe.NoFail = tradeskillRecipeColumns["nofail"];
+    recipe.ReplaceContainer = tradeskillRecipeColumns["replace_container"];
+    recipe.MinExpansion = tradeskillRecipeColumns["min_expansion"];
+    recipesByID.Add(recipe.EQRecipeID, recipe);
 }
 
-// Update the creature templates
-string creatureTemplatesFile = "E:\\ConverterData\\CreatureTemplates.csv";
-List<Dictionary<string, string>> creatureTemplatesRows = FileTool.ReadAllRowsFromFileWithHeader(creatureTemplatesFile, "|");
-foreach(Dictionary<string, string> creatureTemplateColumn in creatureTemplatesRows)
+// Add the items
+string tradeskillRecipeItems = "E:\\ConverterData\\Tradeskill_Recipe_Entries.csv";
+List<Dictionary<string, string>> tradeskillRecipeItemRows = FileTool.ReadAllRowsFromFileWithHeader(tradeskillRecipeItems, "|");
+foreach (Dictionary<string, string> tradeskillRecipeItemColumns in tradeskillRecipeItemRows)
 {
-    // Update the column if this should be deleted
-    int npcID = int.Parse(creatureTemplateColumn["eq_id"]);
-    if (npcID == 72103)
+    string recipeID = tradeskillRecipeItemColumns["recipe_id"];
+    if (recipesByID.ContainsKey(recipeID) == false)
     {
-        int x = 5;
-        int y = 5;
+        Console.WriteLine("Could not find recipe with ID " + recipeID);
+        continue;
     }
-    bool hasValidInstance = false;
-    bool hasInvalidInstance = false;
-    if (groupIDsByEQNPCID.ContainsKey(npcID) == true)
+    TradeskillRecipe curRecipe = recipesByID[recipeID];
+    string itemID = tradeskillRecipeItemColumns["item_id"];
+    string itemName = string.Empty;
+    if (itemNamesByEQID.ContainsKey(itemID) == true)
+        itemName = itemNamesByEQID[itemID];
+    else
+        itemName = "INVALID_ID";
+
+    // Only capture containers for generic
+    string isContainer = tradeskillRecipeItemColumns["iscontainer"];
+    if (isContainer != "0")
     {
-        foreach (int groupID in groupIDsByEQNPCID[npcID])
+        if (curRecipe.EQTradeskillID == "75")
+            curRecipe.ContainerItems.Add(new TradeskillItem(itemID, itemName));
+        continue;
+    }
+
+    // Component items
+    string componentCount = tradeskillRecipeItemColumns["componentcount"];
+    if (componentCount != "0")
+    {
+        bool collisionFound = false;
+        foreach (TradeskillItem item in curRecipe.ComponentItems)
         {
-            if (isExpansionValidByGroupID.ContainsKey(groupID) && isExpansionValidByGroupID[groupID])
-                hasValidInstance = true;
-            else
-                hasInvalidInstance = true;
+            if (item.EQItemID == itemID)
+            {
+                Console.WriteLine("Recipe " + curRecipe.EQRecipeID + " component item collision with id " + item.EQItemID + " and name " + item.ItemName);
+                collisionFound = true;
+                continue;
+            }
         }
+        if (collisionFound == true)
+            continue;
+        curRecipe.ComponentItems.Add(new TradeskillItem(itemID, itemName, componentCount));
     }
-    creatureTemplateColumn["ValidInstances"] = hasValidInstance ? "1" : "0";
-    creatureTemplateColumn["InvalidInstances"] = hasInvalidInstance ? "1" : "0";
+
+    // Produced items
+    string successCount = tradeskillRecipeItemColumns["successcount"];
+    if (successCount != "0")
+    {
+        bool collisionFound = false;
+        foreach (TradeskillItem item in curRecipe.ProducedItems)
+        {
+            if (item.EQItemID == itemID)
+            {
+                Console.WriteLine("Recipe " + curRecipe.EQRecipeID + " produced item collision with id " + item.EQItemID + " and name " + item.ItemName);
+                collisionFound = true;
+                continue;
+            }
+        }
+        foreach (TradeskillItem item in curRecipe.ComponentItems)
+        {
+            if (item.EQItemID == itemID)
+            {
+                if (item.Count != successCount)
+                {
+                    if (itemMaxChangesByEQID.ContainsKey(item.EQItemID) && itemMaxChangesByEQID[item.EQItemID] > 0)
+                    {
+                        curRecipe.ProducedItems.Add(new TradeskillItem(itemID, itemName, "1"));
+                        curRecipe.RecipeName = curRecipe.RecipeOriginalName + " (Recharge)";
+                    }
+                    else
+                        Console.WriteLine("Recipe " + curRecipe.EQRecipeID + " named " + curRecipe.RecipeName + " produced item collided with component item with id " + item.EQItemID + " and name " + item.ItemName + " and the counts did not match");
+                }
+                else
+                {
+                    item.IsConsumed = false;
+                }
+                collisionFound = true;
+                continue;
+            }
+        }
+        if (collisionFound == true)
+            continue;
+        curRecipe.ProducedItems.Add(new TradeskillItem(itemID, itemName, successCount));
+    }
 }
 
-string creatureTemplatesWithUpdatesFile = "E:\\ConverterData\\CreatureTemplatesWithUpdates.csv";
-FileTool.WriteFile(creatureTemplatesWithUpdatesFile, creatureTemplatesRows);
+// Determine how big to make each output section
+int maxNumOfComponents = 0;
+int maxNumOfProduced = 0;
+int maxNumOfContainers = 0;
+foreach (TradeskillRecipe recipe in recipesByID.Values)
+{
+    maxNumOfComponents = Math.Max(maxNumOfComponents, recipe.ComponentItems.Count);
+    maxNumOfProduced = Math.Max(maxNumOfProduced, recipe.ProducedItems.Count);
+    maxNumOfContainers = Math.Max(maxNumOfContainers, recipe.ContainerItems.Count);
+}
+
+// Output a file for this
+string outputFileName = "E:\\ConverterData\\ConvertedRecipes.csv";
+StringBuilder output = new StringBuilder();
+output.Append("eq_recipeID|name|eq_tradeskillID|skill_needed|trival|no_fail|replace_container|min_expansion");
+for (int i = 0; i < maxNumOfProduced; i++)
+{
+    output.Append("|produced_eqid_");
+    output.Append(i.ToString());
+    output.Append("|produced_name_");
+    output.Append(i.ToString());
+    output.Append("|produced_count_");
+    output.Append(i.ToString());
+}
+
+TODO: HERE
 
 Console.WriteLine("Done. Press any key...");
 Console.ReadKey();
