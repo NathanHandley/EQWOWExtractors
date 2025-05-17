@@ -700,6 +700,10 @@ List<Dictionary<string, string>> tradeskillRecipeItemRows = FileTool.ReadAllRows
 foreach (Dictionary<string, string> tradeskillRecipeItemColumns in tradeskillRecipeItemRows)
 {
     string recipeID = tradeskillRecipeItemColumns["recipe_id"];
+    if (recipeID == "13338")
+    {
+        int x = 5;
+    }
     if (recipesByID.ContainsKey(recipeID) == false)
     {
         Console.WriteLine("Could not find recipe with ID " + recipeID);
@@ -795,20 +799,111 @@ foreach (TradeskillRecipe recipe in recipesByID.Values)
 }
 
 // Output a file for this
-string outputFileName = "E:\\ConverterData\\ConvertedRecipes.csv";
-StringBuilder output = new StringBuilder();
-output.Append("eq_recipeID|name|eq_tradeskillID|skill_needed|trival|no_fail|replace_container|min_expansion");
+List<string> outputLines = new List<string>();
+StringBuilder outputSB = new StringBuilder();
+outputSB.Append("eq_recipeID|name|eq_tradeskillID|skill_needed|trival|no_fail|replace_container|min_expansion");
 for (int i = 0; i < maxNumOfProduced; i++)
 {
-    output.Append("|produced_eqid_");
-    output.Append(i.ToString());
-    output.Append("|produced_name_");
-    output.Append(i.ToString());
-    output.Append("|produced_count_");
-    output.Append(i.ToString());
+    outputSB.Append("|produced_eqid_");
+    outputSB.Append(i.ToString());
+    outputSB.Append("|produced_name_");
+    outputSB.Append(i.ToString());
+    outputSB.Append("|produced_count_");
+    outputSB.Append(i.ToString());
+}
+for (int i = 0; i < maxNumOfComponents; i++)
+{
+    outputSB.Append("|component_eqid_");
+    outputSB.Append(i.ToString());
+    outputSB.Append("|component_name_");
+    outputSB.Append(i.ToString());
+    outputSB.Append("|component_count_");
+    outputSB.Append(i.ToString());
+    outputSB.Append("|component_consume_");
+    outputSB.Append(i.ToString());
+}
+for (int i = 0; i < maxNumOfContainers; i++)
+{
+    outputSB.Append("|container_eqid_");
+    outputSB.Append(i.ToString());
+    outputSB.Append("|container_name_");
+    outputSB.Append(i.ToString());
+}
+outputLines.Add(outputSB.ToString());
+foreach (TradeskillRecipe recipe in recipesByID.Values)
+{
+    outputSB.Clear();
+    outputSB.Append(recipe.EQRecipeID);
+    outputSB.Append("|");
+    outputSB.Append(recipe.RecipeName);
+    outputSB.Append("|");
+    outputSB.Append(recipe.EQTradeskillID);
+    outputSB.Append("|");
+    outputSB.Append(recipe.SkillNeeded);
+    outputSB.Append("|");
+    outputSB.Append(recipe.Trivial);
+    outputSB.Append("|");
+    outputSB.Append(recipe.NoFail);
+    outputSB.Append("|");
+    outputSB.Append(recipe.ReplaceContainer);
+    outputSB.Append("|");
+    outputSB.Append(recipe.MinExpansion);
+    outputSB.Append("|");
+    for (int i = 0; i < maxNumOfProduced; i++)
+    {
+        if (i < recipe.ProducedItems.Count)
+        {
+            outputSB.Append(recipe.ProducedItems[i].EQItemID);
+            outputSB.Append("|");
+            outputSB.Append(recipe.ProducedItems[i].ItemName);
+            outputSB.Append("|");
+            outputSB.Append(recipe.ProducedItems[i].Count);
+            outputSB.Append("|");
+        }
+        else
+        {
+            outputSB.Append("|||");
+        }
+    }
+    for (int i = 0; i < maxNumOfComponents; i++)
+    {
+        if (i < recipe.ComponentItems.Count)
+        {
+            outputSB.Append(recipe.ComponentItems[i].EQItemID);
+            outputSB.Append("|");
+            outputSB.Append(recipe.ComponentItems[i].ItemName);
+            outputSB.Append("|");
+            outputSB.Append(recipe.ComponentItems[i].Count);
+            outputSB.Append("|");
+            outputSB.Append(recipe.ComponentItems[i].IsConsumed ? "1" : "0");
+            outputSB.Append("|");
+        }
+        else
+        {
+            outputSB.Append("||||");
+        }
+    }
+    for (int i = 0; i < maxNumOfContainers; i++)
+    {
+        if (i < recipe.ContainerItems.Count)
+        {
+            outputSB.Append(recipe.ContainerItems[i].EQItemID);
+            outputSB.Append("|");
+            outputSB.Append(recipe.ContainerItems[i].ItemName);
+            outputSB.Append("|");
+        }
+        else
+        {
+            outputSB.Append("||");
+        }
+    }
+    outputLines.Add(outputSB.ToString());
 }
 
-TODO: HERE
+string outputFileName = "E:\\ConverterData\\ConvertedRecipes.csv";
+using (var outputFile = new StreamWriter(outputFileName))
+    foreach (string outputLine in outputLines)
+        outputFile.WriteLine(outputLine);
 
 Console.WriteLine("Done. Press any key...");
 Console.ReadKey();
