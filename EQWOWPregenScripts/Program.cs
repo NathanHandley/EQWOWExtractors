@@ -700,7 +700,7 @@ foreach (Dictionary<string, string> tradeskillRecipeColumns in tradeskillRecipeR
 // Add the items
 string tradeskillRecipeItems = "E:\\ConverterData\\Tradeskill_Recipe_Entries.csv";
 List<Dictionary<string, string>> tradeskillRecipeItemRows = FileTool.ReadAllRowsFromFileWithHeader(tradeskillRecipeItems, "|");
-Dictionary<string, TradeskillRecipe> recipesByProducedItemID = new Dictionary<string, TradeskillRecipe>();
+Dictionary<string, List<TradeskillRecipe>> recipesByProducedItemID = new Dictionary<string, List<TradeskillRecipe>>();
 foreach (Dictionary<string, string> tradeskillRecipeItemColumns in tradeskillRecipeItemRows)
 {
     string recipeID = tradeskillRecipeItemColumns["recipe_id"].Trim();
@@ -785,18 +785,53 @@ foreach (Dictionary<string, string> tradeskillRecipeItemColumns in tradeskillRec
         if (collisionFound == true)
             continue;
         curRecipe.ProducedItems.Add(new TradeskillItem(itemID, itemName, successCount));
+        if (recipesByProducedItemID.ContainsKey(itemID) == false)
+            recipesByProducedItemID.Add(itemID, new List<TradeskillRecipe>());
+        if (recipesByProducedItemID[itemID].Contains(curRecipe) == false)
+            recipesByProducedItemID[itemID].Add(curRecipe);
     }
 }
 
 // Loop through and update any recipes as invalid if it's based on invalid components
-//bool foundMoreInvalidItems = false;
-//do
-//{
-//    foreach ()
+bool foundMoreInvalidItems = false;
+do
+{
+    foundMoreInvalidItems = false;
+    foreach (TradeskillRecipe recipe in recipesByID.Values)
+    {
+        if (recipe.Enabled == false)
+            continue;
 
-
-
-//} while (foundMoreInvalidItems == true);
+        foreach (TradeskillItem componentItem in recipe.ComponentItems)
+        {
+            if (recipesByProducedItemID.ContainsKey(componentItem.EQItemID))
+            {
+                foreach (TradeskillRecipe producingRecipe in recipesByProducedItemID[componentItem.EQItemID])
+                {
+                    if (producingRecipe.Enabled == false)
+                    {
+                        recipe.Enabled = false;
+                        foundMoreInvalidItems = true;
+                    }
+                }
+            }
+        }
+        foreach (TradeskillItem requiredItem in recipe.RequiredItems)
+        {
+            if (recipesByProducedItemID.ContainsKey(requiredItem.EQItemID))
+            {
+                foreach (TradeskillRecipe producingRecipe in recipesByProducedItemID[requiredItem.EQItemID])
+                {
+                    if (producingRecipe.Enabled == false)
+                    {
+                        recipe.Enabled = false;
+                        foundMoreInvalidItems = true;
+                    }
+                }
+            }
+        }
+    }
+} while (foundMoreInvalidItems == true);
 
 // Determine how big to make each output section
 int maxNumOfComponents = 0;
