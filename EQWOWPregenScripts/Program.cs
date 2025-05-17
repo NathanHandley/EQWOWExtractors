@@ -671,8 +671,11 @@ string itemFile = "E:\\ConverterData\\ItemTemplates.csv";
 List<Dictionary<string, string>> itemFileRows = FileTool.ReadAllRowsFromFileWithHeader(itemFile, "|");
 foreach (Dictionary<string, string> itemFileColumns in itemFileRows)
 {
-    itemNamesByEQID.Add(itemFileColumns["id"], itemFileColumns["Name"]);
-    itemMaxChangesByEQID.Add(itemFileColumns["id"], int.Parse(itemFileColumns["maxcharges"]));
+    if (itemFileColumns["enabled"] == "0")
+        continue;
+    itemNamesByEQID.Add(itemFileColumns["id"].Trim(), itemFileColumns["Name"].Trim());
+    if (itemFileColumns["stacksize"] == "1" || itemFileColumns["stacksize"] == "0")
+        itemMaxChangesByEQID.Add(itemFileColumns["id"].Trim(), int.Parse(itemFileColumns["maxcharges"].Trim()));
 }
 
 // Read the recipes
@@ -682,43 +685,44 @@ Dictionary<string, TradeskillRecipe> recipesByID = new Dictionary<string, Trades
 foreach (Dictionary<string, string> tradeskillRecipeColumns in tradeskillRecipeRows)
 {
     TradeskillRecipe recipe = new TradeskillRecipe();
-    recipe.EQRecipeID = tradeskillRecipeColumns["id"];
-    recipe.RecipeName = tradeskillRecipeColumns["name"];
-    recipe.RecipeOriginalName = tradeskillRecipeColumns["name"];
-    recipe.EQTradeskillID = tradeskillRecipeColumns["tradeskill"];
-    recipe.SkillNeeded = tradeskillRecipeColumns["skillneeded"];
-    recipe.Trivial = tradeskillRecipeColumns["trivial"];
-    recipe.NoFail = tradeskillRecipeColumns["nofail"];
-    recipe.ReplaceContainer = tradeskillRecipeColumns["replace_container"];
-    recipe.MinExpansion = tradeskillRecipeColumns["min_expansion"];
+    recipe.EQRecipeID = tradeskillRecipeColumns["id"].Trim();
+    recipe.RecipeName = tradeskillRecipeColumns["name"].Trim();
+    recipe.RecipeOriginalName = tradeskillRecipeColumns["name"].Trim();
+    recipe.EQTradeskillID = tradeskillRecipeColumns["tradeskill"].Trim();
+    recipe.SkillNeeded = tradeskillRecipeColumns["skillneeded"].Trim();
+    recipe.Trivial = tradeskillRecipeColumns["trivial"].Trim();
+    recipe.NoFail = tradeskillRecipeColumns["nofail"].Trim();
+    recipe.ReplaceContainer = tradeskillRecipeColumns["replace_container"].Trim();
+    recipe.MinExpansion = tradeskillRecipeColumns["min_expansion"].Trim();
     recipesByID.Add(recipe.EQRecipeID, recipe);
 }
 
 // Add the items
 string tradeskillRecipeItems = "E:\\ConverterData\\Tradeskill_Recipe_Entries.csv";
 List<Dictionary<string, string>> tradeskillRecipeItemRows = FileTool.ReadAllRowsFromFileWithHeader(tradeskillRecipeItems, "|");
+Dictionary<string, TradeskillRecipe> recipesByProducedItemID = new Dictionary<string, TradeskillRecipe>();
 foreach (Dictionary<string, string> tradeskillRecipeItemColumns in tradeskillRecipeItemRows)
 {
-    string recipeID = tradeskillRecipeItemColumns["recipe_id"];
-    if (recipeID == "13338")
-    {
-        int x = 5;
-    }
+    string recipeID = tradeskillRecipeItemColumns["recipe_id"].Trim();
     if (recipesByID.ContainsKey(recipeID) == false)
     {
         Console.WriteLine("Could not find recipe with ID " + recipeID);
         continue;
     }
     TradeskillRecipe curRecipe = recipesByID[recipeID];
-    string itemID = tradeskillRecipeItemColumns["item_id"];
+    string itemID = tradeskillRecipeItemColumns["item_id"].Trim();
     string itemName = string.Empty;
+    string isContainer = tradeskillRecipeItemColumns["iscontainer"].Trim();
     if (itemNamesByEQID.ContainsKey(itemID) == true)
         itemName = itemNamesByEQID[itemID];
     else
+    {
         itemName = "INVALID_ID";
+        if (isContainer == "0" || int.Parse(isContainer) > 1000)
+            curRecipe.Enabled = false;
+    }
 
     // Only capture containers for generic
-    string isContainer = tradeskillRecipeItemColumns["iscontainer"];
     if (isContainer != "0")
     {
         if (curRecipe.EQTradeskillID == "75")
@@ -727,7 +731,7 @@ foreach (Dictionary<string, string> tradeskillRecipeItemColumns in tradeskillRec
     }
 
     // Component items
-    string componentCount = tradeskillRecipeItemColumns["componentcount"];
+    string componentCount = tradeskillRecipeItemColumns["componentcount"].Trim();
     if (componentCount != "0")
     {
         bool collisionFound = false;
@@ -737,7 +741,7 @@ foreach (Dictionary<string, string> tradeskillRecipeItemColumns in tradeskillRec
             {
                 Console.WriteLine("Recipe " + curRecipe.EQRecipeID + " component item collision with id " + item.EQItemID + " and name " + item.ItemName);
                 collisionFound = true;
-                continue;
+                break;
             }
         }
         if (collisionFound == true)
@@ -746,7 +750,7 @@ foreach (Dictionary<string, string> tradeskillRecipeItemColumns in tradeskillRec
     }
 
     // Produced items
-    string successCount = tradeskillRecipeItemColumns["successcount"];
+    string successCount = tradeskillRecipeItemColumns["successcount"].Trim();
     if (successCount != "0")
     {
         bool collisionFound = false;
@@ -756,29 +760,26 @@ foreach (Dictionary<string, string> tradeskillRecipeItemColumns in tradeskillRec
             {
                 Console.WriteLine("Recipe " + curRecipe.EQRecipeID + " produced item collision with id " + item.EQItemID + " and name " + item.ItemName);
                 collisionFound = true;
-                continue;
+                break;
             }
         }
-        foreach (TradeskillItem item in curRecipe.ComponentItems)
+        for (int i = curRecipe.ComponentItems.Count-1; i >= 0; i--)
         {
-            if (item.EQItemID == itemID)
+            TradeskillItem curComponentItem = curRecipe.ComponentItems[i];
+            if (curComponentItem.EQItemID == itemID)
             {
-                if (item.Count != successCount)
+                if (itemMaxChangesByEQID.ContainsKey(curComponentItem.EQItemID) && itemMaxChangesByEQID[curComponentItem.EQItemID] > 0)
                 {
-                    if (itemMaxChangesByEQID.ContainsKey(item.EQItemID) && itemMaxChangesByEQID[item.EQItemID] > 0)
-                    {
-                        curRecipe.ProducedItems.Add(new TradeskillItem(itemID, itemName, "1"));
-                        curRecipe.RecipeName = curRecipe.RecipeOriginalName + " (Recharge)";
-                    }
-                    else
-                        Console.WriteLine("Recipe " + curRecipe.EQRecipeID + " named " + curRecipe.RecipeName + " produced item collided with component item with id " + item.EQItemID + " and name " + item.ItemName + " and the counts did not match");
+                    curRecipe.ProducedItems.Add(new TradeskillItem(itemID, itemName, "1"));
+                    curRecipe.RecipeName = curRecipe.RecipeOriginalName + " (Recharge)";
                 }
                 else
                 {
-                    item.IsConsumed = false;
+                    curRecipe.ComponentItems.RemoveAt(i);
+                    curRecipe.RequiredItems.Add(new TradeskillItem(itemID, itemName));
                 }
                 collisionFound = true;
-                continue;
+                break;
             }
         }
         if (collisionFound == true)
@@ -787,21 +788,33 @@ foreach (Dictionary<string, string> tradeskillRecipeItemColumns in tradeskillRec
     }
 }
 
+// Loop through and update any recipes as invalid if it's based on invalid components
+//bool foundMoreInvalidItems = false;
+//do
+//{
+//    foreach ()
+
+
+
+//} while (foundMoreInvalidItems == true);
+
 // Determine how big to make each output section
 int maxNumOfComponents = 0;
 int maxNumOfProduced = 0;
 int maxNumOfContainers = 0;
+int maxNumOfRequired = 0;
 foreach (TradeskillRecipe recipe in recipesByID.Values)
 {
     maxNumOfComponents = Math.Max(maxNumOfComponents, recipe.ComponentItems.Count);
     maxNumOfProduced = Math.Max(maxNumOfProduced, recipe.ProducedItems.Count);
     maxNumOfContainers = Math.Max(maxNumOfContainers, recipe.ContainerItems.Count);
+    maxNumOfRequired = Math.Max(maxNumOfRequired, recipe.RequiredItems.Count);
 }
 
 // Output a file for this
 List<string> outputLines = new List<string>();
 StringBuilder outputSB = new StringBuilder();
-outputSB.Append("eq_recipeID|name|eq_tradeskillID|skill_needed|trival|no_fail|replace_container|min_expansion");
+outputSB.Append("eq_recipeID|enabled|name|eq_tradeskillID|skill_needed|trival|no_fail|replace_container|min_expansion");
 for (int i = 0; i < maxNumOfProduced; i++)
 {
     outputSB.Append("|produced_eqid_");
@@ -819,8 +832,6 @@ for (int i = 0; i < maxNumOfComponents; i++)
     outputSB.Append(i.ToString());
     outputSB.Append("|component_count_");
     outputSB.Append(i.ToString());
-    outputSB.Append("|component_consume_");
-    outputSB.Append(i.ToString());
 }
 for (int i = 0; i < maxNumOfContainers; i++)
 {
@@ -829,11 +840,20 @@ for (int i = 0; i < maxNumOfContainers; i++)
     outputSB.Append("|container_name_");
     outputSB.Append(i.ToString());
 }
+for (int i = 0; i < maxNumOfRequired; i++)
+{
+    outputSB.Append("|required_eqid_");
+    outputSB.Append(i.ToString());
+    outputSB.Append("|required_name_");
+    outputSB.Append(i.ToString());
+}
 outputLines.Add(outputSB.ToString());
 foreach (TradeskillRecipe recipe in recipesByID.Values)
 {
     outputSB.Clear();
     outputSB.Append(recipe.EQRecipeID);
+    outputSB.Append("|");
+    outputSB.Append(recipe.Enabled ? "1" : "0");
     outputSB.Append("|");
     outputSB.Append(recipe.RecipeName);
     outputSB.Append("|");
@@ -848,17 +868,16 @@ foreach (TradeskillRecipe recipe in recipesByID.Values)
     outputSB.Append(recipe.ReplaceContainer);
     outputSB.Append("|");
     outputSB.Append(recipe.MinExpansion);
-    outputSB.Append("|");
     for (int i = 0; i < maxNumOfProduced; i++)
     {
         if (i < recipe.ProducedItems.Count)
         {
+            outputSB.Append("|");
             outputSB.Append(recipe.ProducedItems[i].EQItemID);
             outputSB.Append("|");
             outputSB.Append(recipe.ProducedItems[i].ItemName);
             outputSB.Append("|");
             outputSB.Append(recipe.ProducedItems[i].Count);
-            outputSB.Append("|");
         }
         else
         {
@@ -869,28 +888,40 @@ foreach (TradeskillRecipe recipe in recipesByID.Values)
     {
         if (i < recipe.ComponentItems.Count)
         {
+            outputSB.Append("|");
             outputSB.Append(recipe.ComponentItems[i].EQItemID);
             outputSB.Append("|");
             outputSB.Append(recipe.ComponentItems[i].ItemName);
             outputSB.Append("|");
             outputSB.Append(recipe.ComponentItems[i].Count);
-            outputSB.Append("|");
-            outputSB.Append(recipe.ComponentItems[i].IsConsumed ? "1" : "0");
-            outputSB.Append("|");
         }
         else
         {
-            outputSB.Append("||||");
+            outputSB.Append("|||");
         }
     }
     for (int i = 0; i < maxNumOfContainers; i++)
     {
         if (i < recipe.ContainerItems.Count)
         {
+            outputSB.Append("|");
             outputSB.Append(recipe.ContainerItems[i].EQItemID);
             outputSB.Append("|");
             outputSB.Append(recipe.ContainerItems[i].ItemName);
+        }
+        else
+        {
+            outputSB.Append("||");
+        }
+    }
+    for (int i = 0; i < maxNumOfRequired; i++)
+    {
+        if (i < recipe.RequiredItems.Count)
+        {
             outputSB.Append("|");
+            outputSB.Append(recipe.RequiredItems[i].EQItemID);
+            outputSB.Append("|");
+            outputSB.Append(recipe.RequiredItems[i].ItemName);
         }
         else
         {

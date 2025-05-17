@@ -11,7 +11,6 @@ namespace EQWOWPregenScripts
         public string EQItemID = string.Empty;
         public string ItemName = string.Empty;
         public string Count = string.Empty;
-        public bool IsConsumed = true;
 
         public TradeskillItem(string eQItemID, string itemName)
         {

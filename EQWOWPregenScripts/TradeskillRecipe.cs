@@ -8,6 +8,7 @@ namespace EQWOWPregenScripts
 {
     internal class TradeskillRecipe
     {
+        public bool Enabled = true;
         public string EQRecipeID = string.Empty;
         public string RecipeOriginalName = string.Empty;
         public string RecipeName = string.Empty;
@@ -20,5 +21,6 @@ namespace EQWOWPregenScripts
         public List<TradeskillItem> ContainerItems = new List<TradeskillItem>();
         public List<TradeskillItem> ComponentItems = new List<TradeskillItem>();
         public List<TradeskillItem> ProducedItems = new List<TradeskillItem>();
+        public List<TradeskillItem> RequiredItems = new List<TradeskillItem>();
     }
 }
