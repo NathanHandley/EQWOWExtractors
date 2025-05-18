@@ -694,6 +694,8 @@ foreach (Dictionary<string, string> tradeskillRecipeColumns in tradeskillRecipeR
     recipe.NoFail = tradeskillRecipeColumns["nofail"].Trim();
     recipe.ReplaceContainer = tradeskillRecipeColumns["replace_container"].Trim();
     recipe.MinExpansion = tradeskillRecipeColumns["min_expansion"].Trim();
+    if (int.Parse(tradeskillRecipeColumns["min_expansion"]) > 2)
+        recipe.Enabled = false;
     recipesByID.Add(recipe.EQRecipeID, recipe);
 }
 
@@ -806,13 +808,16 @@ do
         {
             if (recipesByProducedItemID.ContainsKey(componentItem.EQItemID))
             {
+                bool hasEnabled = false;
                 foreach (TradeskillRecipe producingRecipe in recipesByProducedItemID[componentItem.EQItemID])
                 {
-                    if (producingRecipe.Enabled == false)
-                    {
-                        recipe.Enabled = false;
-                        foundMoreInvalidItems = true;
-                    }
+                    if (producingRecipe.Enabled == true)
+                        hasEnabled = true;
+                }
+                if (hasEnabled == false)
+                {
+                    recipe.Enabled = false;
+                    foundMoreInvalidItems = true;
                 }
             }
         }
@@ -820,13 +825,16 @@ do
         {
             if (recipesByProducedItemID.ContainsKey(requiredItem.EQItemID))
             {
+                bool hasEnabled = false;
                 foreach (TradeskillRecipe producingRecipe in recipesByProducedItemID[requiredItem.EQItemID])
                 {
-                    if (producingRecipe.Enabled == false)
-                    {
-                        recipe.Enabled = false;
-                        foundMoreInvalidItems = true;
-                    }
+                    if (producingRecipe.Enabled == true)
+                        hasEnabled = true;
+                }
+                if (hasEnabled == false)
+                {
+                    recipe.Enabled = false;
+                    foundMoreInvalidItems = true;
                 }
             }
         }
