@@ -410,5 +410,60 @@ namespace EQWOWPregenScripts
             string outputSpawnInstancesFile = "E:\\ConverterData\\SpawnInstancesUpdated.csv";
             FileTool.WriteFile(outputSpawnInstancesFile, spawnInstanceRows);
         }
+
+        public static void UpdateTradeskillReferencesInItemTemplates()
+        {
+            // Read in the recipe-item relationships
+            string tradeskillRecipesFile = "E:\\ConverterData\\TradeskillRecipes.csv";
+            Dictionary<string, List<string>> eqItemIDsByProducingTradeskillID = new Dictionary<string, List<string>>();
+            List<Dictionary<string, string>> recipeRows = FileTool.ReadAllRowsFromFileWithHeader(tradeskillRecipesFile, "|");
+            foreach (Dictionary<string, string> recipeColumns in recipeRows)
+            {
+                //if (recipeColumns["enabled"] == "0")
+                //    continue;
+                string producingTradeskillID = recipeColumns["eq_tradeskillID"];
+                if (producingTradeskillID == "75")
+                    continue;
+                List<string> eqItemIDs = new List<string>();
+                if (recipeColumns["produced_eqid_0"].Length > 0)
+                    eqItemIDs.Add(recipeColumns["produced_eqid_0"]);
+                if (recipeColumns["produced_eqid_1"].Length > 0)
+                    eqItemIDs.Add(recipeColumns["produced_eqid_1"]);
+                if (recipeColumns["produced_eqid_2"].Length > 0)
+                    eqItemIDs.Add(recipeColumns["produced_eqid_2"]);
+                if (recipeColumns["produced_eqid_3"].Length > 0)
+                    eqItemIDs.Add(recipeColumns["produced_eqid_3"]);
+                foreach (string eqItemID in eqItemIDs)
+                {
+                    if (eqItemIDsByProducingTradeskillID.ContainsKey(eqItemID) == false)
+                        eqItemIDsByProducingTradeskillID.Add(eqItemID, new List<string>());
+                    if (eqItemIDsByProducingTradeskillID[eqItemID].Contains(producingTradeskillID) == false)
+                        eqItemIDsByProducingTradeskillID[eqItemID].Add(producingTradeskillID);
+                }
+            }
+
+            // Write the relationships to the item templates file
+            string itemFile = "E:\\ConverterData\\ItemTemplates.csv";
+            List<Dictionary<string, string>> itemFileRows = FileTool.ReadAllRowsFromFileWithHeader(itemFile, "|");
+            foreach (Dictionary<string, string> itemFileColumns in itemFileRows)
+            {
+                if (itemFileColumns["enabled"] == "0")
+                    continue;
+                string eqItemID = itemFileColumns["id"];
+                if (eqItemIDsByProducingTradeskillID.ContainsKey(eqItemID) == true)
+                {
+                    string tradeskillIDString = string.Empty;
+                    for (int i = 0; i < eqItemIDsByProducingTradeskillID[eqItemID].Count; i++)
+                    {
+                        if (i > 0)
+                            tradeskillIDString += ", ";
+                        tradeskillIDString += eqItemIDsByProducingTradeskillID[eqItemID][i];
+                    }
+                    itemFileColumns["source_tradeskill"] = tradeskillIDString;
+                }
+            }
+            string itemFileOutput = "E:\\ConverterData\\ItemTemplatesOutput.csv";
+            FileTool.WriteFile(itemFileOutput, itemFileRows);
+        }
     }
 }

@@ -666,6 +666,7 @@ using System.Text;
 
 Console.WriteLine("[1] Flatten Tradeskill Data");
 Console.WriteLine("[2] Update Spawn Locations");
+Console.WriteLine("[3] Write tradeskill IDs for produced items in item templates");
 Console.WriteLine(" ");
 Console.Write("Command: ");
 string? enteredCommand = Console.ReadLine();
@@ -675,6 +676,7 @@ if (enteredCommand != null)
     {
         case "1": UtilityConsole.ConvertTradeskillsToFlattenedList(); break;
         case "2": UtilityConsole.UpdateSpawnLocations(); break;
+        case "3": UtilityConsole.UpdateTradeskillReferencesInItemTemplates(); break;
         default: Console.WriteLine("Unknown command entered"); break;
     }
 }
