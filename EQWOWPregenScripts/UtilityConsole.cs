@@ -419,8 +419,8 @@ namespace EQWOWPregenScripts
             List<Dictionary<string, string>> recipeRows = FileTool.ReadAllRowsFromFileWithHeader(tradeskillRecipesFile, "|");
             foreach (Dictionary<string, string> recipeColumns in recipeRows)
             {
-                //if (recipeColumns["enabled"] == "0")
-                //    continue;
+                if (recipeColumns["enabled"] == "0")
+                    continue;
                 string producingTradeskillID = recipeColumns["eq_tradeskillID"];
                 if (producingTradeskillID == "75")
                     continue;
