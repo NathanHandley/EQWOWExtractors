@@ -15,9 +15,7 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using System.Text;
-using Google.Protobuf;
 using MySql.Data.MySqlClient;
-using Org.BouncyCastle.Utilities;
 
 namespace EQWOWPregenScripts
 {
@@ -473,12 +471,72 @@ namespace EQWOWPregenScripts
             EQSpellsEFF spellsEFF = new EQSpellsEFF();
             spellsEFF.LoadFromDisk("E:\\ConverterData\\spells.eff");
             List<string> outputLines = new List<string>();
+
+            // Header
+            StringBuilder outputSB = new StringBuilder();
+            outputSB.Append("EffectID|");
+            outputSB.Append("EffectTier|");
+            for (int i = 0; i < 3; i++)
+                outputSB.Append("SpriteName"+i+"|");
+            outputSB.Append("TypeID|");
+            for (int i = 0; i < 3; i++)
+                outputSB.Append("LocationID"+i+"|");
+            for (int i = 0; i < 3; i++)
+                outputSB.Append("EmissionType"+i+"|");
+            for (int i = 0; i < 12; i++)
+                outputSB.Append("SpriteListName"+i+"|");
+            outputSB.Append("SpriteListEffect|");
+            outputSB.Append("SoundID|");
+            for (int i = 0; i < 3; i++)
+            {
+                outputSB.Append("ColorR"+i+"|");
+                outputSB.Append("ColorG"+i+"|");
+                outputSB.Append("ColorB"+i+"|");
+                outputSB.Append("ColorA"+i+"|");
+            }
+            for (int i = 0; i < 3; i++)
+                outputSB.Append("Gravity"+i+"|");
+            for (int i = 0; i < 3; i++)
+            {
+                outputSB.Append("EmitterX"+i+"|");
+                outputSB.Append("EmitterY"+i+"|");
+                outputSB.Append("EmitterZ"+i+"|");
+            }
+            for (int i = 0; i < 3; i++)
+                outputSB.Append("SpawnRadius"+i+"|");
+            for (int i = 0; i < 3; i++)
+                outputSB.Append("SpawnAngle"+i+"|");
+            for (int i = 0; i < 3; i++)
+                outputSB.Append("SpawnLifespan"+i+"|");
+            for (int i = 0; i < 3; i++)
+                outputSB.Append("SpawnVelocity"+i+"|");
+            for (int i = 0; i < 3; i++)
+                outputSB.Append("SpawnRate"+i+"|");
+            for (int i = 0; i < 3; i++)
+                outputSB.Append("SpawnScale"+i+"|");
+            for (int i = 0; i < 9; i++)
+                outputSB.Append("Unknown"+i+"|");
+            for (int i = 0; i < 12; i++)
+                outputSB.Append("SpriteListUnknown"+i+"|");
+            for (int i = 0; i < 12; i++)
+                outputSB.Append("SpriteListCircularShift"+i+"|");
+            for (int i = 0; i < 12; i++)
+                outputSB.Append("SpriteListVertForce"+i+"|");
+            for (int i = 0; i < 12; i++)
+                outputSB.Append("SpriteListRadii"+i+"|");
+            for (int i = 0; i < 12; i++)
+                outputSB.Append("SpriteListMovement"+i+"|");
+            for (int i = 0; i < 12; i++)
+                outputSB.Append("SpriteListScale"+i+"|");
+            outputLines.Add(outputSB.ToString());
+
+            // Data
             for (int j = 0; j < spellsEFF.SpellEffects.Count; j++)
             {
                 EQSpellsEFF.EQSpellEffect curEffect = spellsEFF.SpellEffects[j];
-                StringBuilder outputSB = new StringBuilder();
                 for (int k = 0; k < 3; k++)
                 {
+                    outputSB.Clear();
                     outputSB.Append(j + "|");
                     outputSB.Append(k + "|");
                     for (int i = 0; i < 3; i++)
@@ -533,7 +591,6 @@ namespace EQWOWPregenScripts
                         outputSB.Append(curEffect.SectionDatas[k].SpriteListMovements[i] + "|");
                     for (int i = 0; i < 12; i++)
                         outputSB.Append(curEffect.SectionDatas[k].SpriteListScales[i] + "|");
-                    outputSB.AppendLine(" ");
                     outputLines.Add(outputSB.ToString());
                 }
             }
