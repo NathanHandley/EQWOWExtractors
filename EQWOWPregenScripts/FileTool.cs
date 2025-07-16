@@ -121,5 +121,10 @@ namespace EQWOWPregenScripts
                 foreach (string outputLine in outputLines)
                     outputFile.WriteLine(outputLine);
         }
+
+        public static List<byte> GetFileBytes(string filePath)
+        {
+            return new List<byte>(File.ReadAllBytes(filePath));
+        }
     }
 }

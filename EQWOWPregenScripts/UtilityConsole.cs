@@ -15,7 +15,9 @@
 //  along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
 using System.Text;
+using Google.Protobuf;
 using MySql.Data.MySqlClient;
+using Org.BouncyCastle.Utilities;
 
 namespace EQWOWPregenScripts
 {
@@ -464,6 +466,81 @@ namespace EQWOWPregenScripts
             }
             string itemFileOutput = "E:\\ConverterData\\ItemTemplatesOutput.csv";
             FileTool.WriteFile(itemFileOutput, itemFileRows);
+        }
+    
+        public static void ExtractSpellsEFF()
+        {
+            EQSpellsEFF spellsEFF = new EQSpellsEFF();
+            spellsEFF.LoadFromDisk("E:\\ConverterData\\spells.eff");
+            List<string> outputLines = new List<string>();
+            for (int j = 0; j < spellsEFF.SpellEffects.Count; j++)
+            {
+                EQSpellsEFF.EQSpellEffect curEffect = spellsEFF.SpellEffects[j];
+                StringBuilder outputSB = new StringBuilder();
+                for (int k = 0; k < 3; k++)
+                {
+                    outputSB.Append(j + "|");
+                    outputSB.Append(k + "|");
+                    for (int i = 0; i < 3; i++)
+                        outputSB.Append(curEffect.SectionDatas[k].SpriteNames[i] + "|");
+                    outputSB.Append(curEffect.SectionDatas[k].TypeString + "|");
+                    for (int i = 0; i < 3; i++)
+                        outputSB.Append(curEffect.SectionDatas[k].LocationIDs[i] + "|");
+                    for (int i = 0; i < 3; i++)
+                        outputSB.Append(curEffect.SectionDatas[k].EmissionTypeIDs[i] + "|");
+                    for (int i = 0; i < 12; i++)
+                        outputSB.Append(curEffect.SectionDatas[k].SpriteListNames[i] + "|");
+                    outputSB.Append(curEffect.SectionDatas[k].SpriteListEffect + "|");
+                    outputSB.Append(curEffect.SectionDatas[k].SoundID + "|");
+                    for (int i = 0; i < 3; i++)
+                    {
+                        outputSB.Append(curEffect.SectionDatas[k].EmitterColors[i].R + "|");
+                        outputSB.Append(curEffect.SectionDatas[k].EmitterColors[i].G + "|");
+                        outputSB.Append(curEffect.SectionDatas[k].EmitterColors[i].B + "|");
+                        outputSB.Append(curEffect.SectionDatas[k].EmitterColors[i].A + "|");
+                    }
+                    for (int i = 0; i < 3; i++)
+                        outputSB.Append(curEffect.SectionDatas[k].EmitterGravities[i] + "|");
+                    for (int i = 0; i < 3; i++)
+                    {
+                        outputSB.Append(curEffect.SectionDatas[k].EmitterSpawnXs[i] + "|");
+                        outputSB.Append(curEffect.SectionDatas[k].EmitterSpawnYs[i] + "|");
+                        outputSB.Append(curEffect.SectionDatas[k].EmitterSpawnZs[i] + "|");
+                    }
+                    for (int i = 0; i < 3; i++)
+                        outputSB.Append(curEffect.SectionDatas[k].EmitterSpawnRadii[i] + "|");
+                    for (int i = 0; i < 3; i++)
+                        outputSB.Append(curEffect.SectionDatas[k].EmitterSpawnAngles[i] + "|");
+                    for (int i = 0; i < 3; i++)
+                        outputSB.Append(curEffect.SectionDatas[k].EmitterSpawnLifespans[i] + "|");
+                    for (int i = 0; i < 3; i++)
+                        outputSB.Append(curEffect.SectionDatas[k].EmitterSpawnVelocities[i] + "|");
+                    for (int i = 0; i < 3; i++)
+                        outputSB.Append(curEffect.SectionDatas[k].EmitterSpawnRates[i] + "|");
+                    for (int i = 0; i < 3; i++)
+                        outputSB.Append(curEffect.SectionDatas[k].EmitterSpawnScale[i] + "|");
+                    for (int i = 0; i < 9; i++)
+                        outputSB.Append(curEffect.SectionDatas[k].UnknownData[i] + "|");
+                    for (int i = 0; i < 12; i++)
+                        outputSB.Append(curEffect.SectionDatas[k].SpriteListUnknown[i] + "|");
+                    for (int i = 0; i < 12; i++)
+                        outputSB.Append(curEffect.SectionDatas[k].SpriteListCircularShifts[i] + "|");
+                    for (int i = 0; i < 12; i++)
+                        outputSB.Append(curEffect.SectionDatas[k].SpriteListVerticalForces[i] + "|");
+                    for (int i = 0; i < 12; i++)
+                        outputSB.Append(curEffect.SectionDatas[k].SpriteListRadii[i] + "|");
+                    for (int i = 0; i < 12; i++)
+                        outputSB.Append(curEffect.SectionDatas[k].SpriteListMovements[i] + "|");
+                    for (int i = 0; i < 12; i++)
+                        outputSB.Append(curEffect.SectionDatas[k].SpriteListScales[i] + "|");
+                    outputSB.AppendLine(" ");
+                    outputLines.Add(outputSB.ToString());
+                }
+            }
+            string outputFileName = "E:\\ConverterData\\spellseff.csv";
+            using (var outputFile = new StreamWriter(outputFileName))
+                foreach (string outputLine in outputLines)
+                    outputFile.WriteLine(outputLine);
         }
     }
 }
