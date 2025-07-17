@@ -476,46 +476,31 @@ namespace EQWOWPregenScripts
             StringBuilder outputSB = new StringBuilder();
             outputSB.Append("EffectID|");
             outputSB.Append("EffectTier|");
-            for (int i = 0; i < 3; i++)
-                outputSB.Append("SpriteName"+i+"|");
             outputSB.Append("TypeID|");
-            for (int i = 0; i < 3; i++)
-                outputSB.Append("LocationID"+i+"|");
-            for (int i = 0; i < 3; i++)
-                outputSB.Append("EmissionType"+i+"|");
-            for (int i = 0; i < 12; i++)
-                outputSB.Append("SpriteListName"+i+"|");
             outputSB.Append("SpriteListEffect|");
             outputSB.Append("SoundID|");
             for (int i = 0; i < 3; i++)
             {
-                outputSB.Append("ColorR"+i+"|");
-                outputSB.Append("ColorG"+i+"|");
-                outputSB.Append("ColorB"+i+"|");
-                outputSB.Append("ColorA"+i+"|");
+                outputSB.Append("SpriteName" + i + "|");
+                outputSB.Append("LocationID" + i + "|");
+                outputSB.Append("EmissionType" + i + "|");
+                outputSB.Append("ColorR" + i + "|");
+                outputSB.Append("ColorG" + i + "|");
+                outputSB.Append("ColorB" + i + "|");
+                outputSB.Append("ColorA" + i + "|");
+                outputSB.Append("Gravity" + i + "|");
+                outputSB.Append("EmitterX" + i + "|");
+                outputSB.Append("EmitterY" + i + "|");
+                outputSB.Append("EmitterZ" + i + "|");
+                outputSB.Append("SpawnRadius" + i + "|");
+                outputSB.Append("SpawnAngle" + i + "|");
+                outputSB.Append("SpawnLifespan" + i + "|");
+                outputSB.Append("SpawnVelocity" + i + "|");
+                outputSB.Append("SpawnRate" + i + "|");
+                outputSB.Append("SpawnScale" + i + "|");
             }
-            for (int i = 0; i < 3; i++)
-                outputSB.Append("Gravity"+i+"|");
-            for (int i = 0; i < 3; i++)
-            {
-                outputSB.Append("EmitterX"+i+"|");
-                outputSB.Append("EmitterY"+i+"|");
-                outputSB.Append("EmitterZ"+i+"|");
-            }
-            for (int i = 0; i < 3; i++)
-                outputSB.Append("SpawnRadius"+i+"|");
-            for (int i = 0; i < 3; i++)
-                outputSB.Append("SpawnAngle"+i+"|");
-            for (int i = 0; i < 3; i++)
-                outputSB.Append("SpawnLifespan"+i+"|");
-            for (int i = 0; i < 3; i++)
-                outputSB.Append("SpawnVelocity"+i+"|");
-            for (int i = 0; i < 3; i++)
-                outputSB.Append("SpawnRate"+i+"|");
-            for (int i = 0; i < 3; i++)
-                outputSB.Append("SpawnScale"+i+"|");
-            for (int i = 0; i < 9; i++)
-                outputSB.Append("Unknown"+i+"|");
+            for (int i = 0; i < 12; i++)
+                outputSB.Append("SpriteListName" + i + "|");
             for (int i = 0; i < 12; i++)
                 outputSB.Append("SpriteListUnknown"+i+"|");
             for (int i = 0; i < 12; i++)
@@ -528,6 +513,8 @@ namespace EQWOWPregenScripts
                 outputSB.Append("SpriteListMovement"+i+"|");
             for (int i = 0; i < 12; i++)
                 outputSB.Append("SpriteListScale"+i+"|");
+            //for (int i = 0; i < 9; i++)
+            //    outputSB.Append("Unknown" + i + "|");
             outputLines.Add(outputSB.ToString());
 
             // Data
@@ -539,46 +526,31 @@ namespace EQWOWPregenScripts
                     outputSB.Clear();
                     outputSB.Append(j + "|");
                     outputSB.Append(k + "|");
-                    for (int i = 0; i < 3; i++)
-                        outputSB.Append(curEffect.SectionDatas[k].SpriteNames[i] + "|");
                     outputSB.Append(curEffect.SectionDatas[k].TypeString + "|");
-                    for (int i = 0; i < 3; i++)
-                        outputSB.Append(curEffect.SectionDatas[k].LocationIDs[i] + "|");
-                    for (int i = 0; i < 3; i++)
-                        outputSB.Append(curEffect.SectionDatas[k].EmissionTypeIDs[i] + "|");
-                    for (int i = 0; i < 12; i++)
-                        outputSB.Append(curEffect.SectionDatas[k].SpriteListNames[i] + "|");
                     outputSB.Append(curEffect.SectionDatas[k].SpriteListEffect + "|");
                     outputSB.Append(curEffect.SectionDatas[k].SoundID + "|");
                     for (int i = 0; i < 3; i++)
                     {
+                        outputSB.Append(curEffect.SectionDatas[k].SpriteNames[i] + "|");
+                        outputSB.Append(curEffect.SectionDatas[k].LocationIDs[i] + "|");
+                        outputSB.Append(curEffect.SectionDatas[k].EmissionTypeIDs[i] + "|");
                         outputSB.Append(curEffect.SectionDatas[k].EmitterColors[i].R + "|");
                         outputSB.Append(curEffect.SectionDatas[k].EmitterColors[i].G + "|");
                         outputSB.Append(curEffect.SectionDatas[k].EmitterColors[i].B + "|");
                         outputSB.Append(curEffect.SectionDatas[k].EmitterColors[i].A + "|");
-                    }
-                    for (int i = 0; i < 3; i++)
                         outputSB.Append(curEffect.SectionDatas[k].EmitterGravities[i] + "|");
-                    for (int i = 0; i < 3; i++)
-                    {
                         outputSB.Append(curEffect.SectionDatas[k].EmitterSpawnXs[i] + "|");
                         outputSB.Append(curEffect.SectionDatas[k].EmitterSpawnYs[i] + "|");
                         outputSB.Append(curEffect.SectionDatas[k].EmitterSpawnZs[i] + "|");
-                    }
-                    for (int i = 0; i < 3; i++)
                         outputSB.Append(curEffect.SectionDatas[k].EmitterSpawnRadii[i] + "|");
-                    for (int i = 0; i < 3; i++)
                         outputSB.Append(curEffect.SectionDatas[k].EmitterSpawnAngles[i] + "|");
-                    for (int i = 0; i < 3; i++)
                         outputSB.Append(curEffect.SectionDatas[k].EmitterSpawnLifespans[i] + "|");
-                    for (int i = 0; i < 3; i++)
                         outputSB.Append(curEffect.SectionDatas[k].EmitterSpawnVelocities[i] + "|");
-                    for (int i = 0; i < 3; i++)
                         outputSB.Append(curEffect.SectionDatas[k].EmitterSpawnRates[i] + "|");
-                    for (int i = 0; i < 3; i++)
                         outputSB.Append(curEffect.SectionDatas[k].EmitterSpawnScale[i] + "|");
-                    for (int i = 0; i < 9; i++)
-                        outputSB.Append(curEffect.SectionDatas[k].UnknownData[i] + "|");
+                    }
+                    for (int i = 0; i < 12; i++)
+                        outputSB.Append(curEffect.SectionDatas[k].SpriteListNames[i] + "|");
                     for (int i = 0; i < 12; i++)
                         outputSB.Append(curEffect.SectionDatas[k].SpriteListUnknown[i] + "|");
                     for (int i = 0; i < 12; i++)
@@ -591,6 +563,8 @@ namespace EQWOWPregenScripts
                         outputSB.Append(curEffect.SectionDatas[k].SpriteListMovements[i] + "|");
                     for (int i = 0; i < 12; i++)
                         outputSB.Append(curEffect.SectionDatas[k].SpriteListScales[i] + "|");
+                    //for (int i = 0; i < 9; i++)
+                    //    outputSB.Append(curEffect.SectionDatas[k].UnknownData[i] + "|");
                     outputLines.Add(outputSB.ToString());
                 }
             }
