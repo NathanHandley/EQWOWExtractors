@@ -466,6 +466,38 @@ namespace EQWOWPregenScripts
             FileTool.WriteFile(itemFileOutput, itemFileRows);
         }
     
+        public static void GenerateAndAddSpellIDsForWornSpells()
+        {
+            // Read in the worn spell list
+            HashSet<int> spellIDsThatAreWornSpells = new HashSet<int>();
+            string itemFile = "E:\\ConverterData\\ItemTemplates.csv";
+            List<Dictionary<string, string>> itemFileRows = FileTool.ReadAllRowsFromFileWithHeader(itemFile, "|");
+            foreach (Dictionary<string, string> itemFileColumns in itemFileRows)
+            {
+                if (int.Parse(itemFileColumns["worntype"]) == 2)
+                {
+                    int wornSpellID = int.Parse(itemFileColumns["worneffect"]);
+                    spellIDsThatAreWornSpells.Add(wornSpellID);
+                }
+            }
+
+            // Update the spell spreadsheet with these spell IDs
+            int curNewSpellID = 96000;
+            string spellFile = "E:\\ConverterData\\SpellTemplates.csv";
+            List<Dictionary<string, string>> spellFileRows = FileTool.ReadAllRowsFromFileWithHeader(spellFile, "|");
+            foreach (Dictionary<string, string> spellFileColumns in spellFileRows)
+            {
+                int eqID = int.Parse(spellFileColumns["eq_id"]);
+                if (spellIDsThatAreWornSpells.Contains(eqID) == true)
+                {
+                    spellFileColumns["wow_worn_id"] = curNewSpellID.ToString();
+                    curNewSpellID++;
+                }
+            }
+            string spellFileOutput = "E:\\ConverterData\\SpellTemplatesOutput.csv";
+            FileTool.WriteFile(spellFileOutput, spellFileRows);
+        }
+
         public static void ExtractSpellsEFF()
         {
             EQSpellsEFF spellsEFF = new EQSpellsEFF();
