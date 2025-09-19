@@ -395,7 +395,7 @@ namespace EQWOWPregenScripts
             }
 
             // Update records in the spawn instance file into a new file
-            string inputSpawnInstancesFile = "E:\\ConverterData\\SpawnInstances.csv";
+            string inputSpawnInstancesFile = "E:\\Development\\EQWOW\\Assets\\WorldData\\SpawnInstances.csv";
             List<Dictionary<string, string>> spawnInstanceRows = FileTool.ReadAllRowsFromFileWithHeader(inputSpawnInstancesFile, "|");
             foreach (Dictionary<string, string> spawnInstanceColumns in spawnInstanceRows)
             {
@@ -407,8 +407,10 @@ namespace EQWOWPregenScripts
                     spawnInstanceColumns["z"] = curLocation.Z;
                 }
             }
-            string outputSpawnInstancesFile = "E:\\ConverterData\\SpawnInstancesUpdated.csv";
-            FileTool.WriteFile(outputSpawnInstancesFile, spawnInstanceRows);
+            File.Delete(inputSpawnInstancesFile);
+
+            //string outputSpawnInstancesFile = "E:\\ConverterData\\SpawnInstancesUpdated.csv";
+            FileTool.WriteFile(inputSpawnInstancesFile, spawnInstanceRows);
         }
 
         public static void UpdateTradeskillReferencesInItemTemplates()

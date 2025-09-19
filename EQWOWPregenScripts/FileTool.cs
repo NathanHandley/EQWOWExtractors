@@ -97,7 +97,7 @@ namespace EQWOWPregenScripts
             {
                 string columnName = outputColumnRows[0].Keys.ToList()[i];
                 headerSB.Append(columnName);
-                if (i < outputColumnRows.Count - 1)
+                if (i < outputColumnRows[0].Keys.Count - 1)
                     headerSB.Append("|");
             }
             outputLines.Add(headerSB.ToString());
@@ -110,7 +110,7 @@ namespace EQWOWPregenScripts
                 {
                     string value = row.Values.ToList()[j];
                     bodySB.Append(value);
-                    if (j <  outputColumnRows.Count - 1)
+                    if (j < outputColumnRows[0].Keys.Count - 1)
                         bodySB.Append("|");
                 }
                 outputLines.Add(bodySB.ToString());
