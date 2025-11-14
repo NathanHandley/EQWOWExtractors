@@ -607,5 +607,39 @@ namespace EQWOWPregenScripts
                 foreach (string outputLine in outputLines)
                     outputFile.WriteLine(outputLine);
         }
+
+        public static void StitchMinimapsIntoMaps()
+        {
+            // Grab minimap images and sort into zones
+            string sourceMinimapFolder = "E:\\ConverterData\\MinimapsSource";
+            string targetStitchedFolder = "E:\\ConverterData\\StitchedMaps";
+            string[] minimapFullFilePaths = Directory.GetFiles(sourceMinimapFolder, "*.png");
+            Dictionary<string, List<MinimapMetadata>> minimapsByZoneName = new Dictionary<string, List<MinimapMetadata>>();
+            foreach (string minimapFullFilePath in minimapFullFilePaths)
+            { 
+                MinimapMetadata minimapMetadata = new MinimapMetadata();
+                minimapMetadata.FullFilePath = minimapFullFilePath;
+
+                string fileNameOnly = Path.GetFileName(minimapFullFilePath);
+                int firstUnderscoreIndex = fileNameOnly.IndexOf('_');
+                int secondUnderscoreIndex = fileNameOnly.IndexOf('_', firstUnderscoreIndex + 1);
+                minimapMetadata.ZoneName = fileNameOnly.Substring(0, secondUnderscoreIndex);
+                int thirdUnderscoreIndex = fileNameOnly.IndexOf('_', secondUnderscoreIndex + 1);
+                minimapMetadata.XTile = Convert.ToInt32(fileNameOnly.Substring(secondUnderscoreIndex + 1, thirdUnderscoreIndex - secondUnderscoreIndex - 1));
+                int periodIndex = fileNameOnly.IndexOf('.', thirdUnderscoreIndex + 1);
+                minimapMetadata.YTile = Convert.ToInt32(fileNameOnly.Substring(thirdUnderscoreIndex + 1, periodIndex - thirdUnderscoreIndex - 1));
+
+                if (minimapsByZoneName.ContainsKey(minimapMetadata.ZoneName) == false)
+                    minimapsByZoneName.Add(minimapMetadata.ZoneName, new List<MinimapMetadata>());
+                minimapsByZoneName[minimapMetadata.ZoneName].Add(minimapMetadata);
+            }
+
+            // Generate stitched maps for each zone
+            foreach (var minimapSetForZone in minimapsByZoneName)
+            {
+                string outputFilename = Path.Combine(targetStitchedFolder, minimapSetForZone.Key + ".png");
+                ImageTool.CombineMinimapImages(minimapSetForZone.Value, outputFilename);
+            }
+        }
     }
 }
