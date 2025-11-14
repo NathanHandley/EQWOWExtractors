@@ -613,6 +613,9 @@ namespace EQWOWPregenScripts
             // Grab minimap images and sort into zones
             string sourceMinimapFolder = "E:\\ConverterData\\MinimapsSource";
             string targetStitchedFolder = "E:\\ConverterData\\StitchedMaps";
+            if (Directory.Exists(targetStitchedFolder) == true)
+                Directory.Delete(targetStitchedFolder, true);
+            Directory.CreateDirectory(targetStitchedFolder);
             string[] minimapFullFilePaths = Directory.GetFiles(sourceMinimapFolder, "*.png");
             Dictionary<string, List<MinimapMetadata>> minimapsByZoneName = new Dictionary<string, List<MinimapMetadata>>();
             foreach (string minimapFullFilePath in minimapFullFilePaths)
@@ -639,6 +642,21 @@ namespace EQWOWPregenScripts
             {
                 string outputFilename = Path.Combine(targetStitchedFolder, minimapSetForZone.Key + ".png");
                 ImageTool.CombineMinimapImages(minimapSetForZone.Value, outputFilename);
+            }
+        }
+
+        public static void BrightenMinimaps()
+        {
+            string sourceMinimapFolder = "E:\\ConverterData\\MinimapsSource";
+            string targetMinimapFolder = "E:\\ConverterData\\MinimapsTarget";
+            if (Directory.Exists(targetMinimapFolder) == true)
+                Directory.Delete(targetMinimapFolder, true);
+            Directory.CreateDirectory(targetMinimapFolder);
+            string[] minimapFullFilePaths = Directory.GetFiles(sourceMinimapFolder, "*.png");
+            foreach (string sourceMinimapFullPath in minimapFullFilePaths)
+            {
+                string outputMinimapFullPath = Path.Combine(targetMinimapFolder, Path.GetFileName(sourceMinimapFullPath));
+                ImageTool.AdjustPixelBrightness(sourceMinimapFullPath, outputMinimapFullPath, 1.5f, 255);
             }
         }
     }

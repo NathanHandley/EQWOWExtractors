@@ -52,9 +52,7 @@ namespace EQWOWPregenScripts
 
                 // Verify tile image dimensions match
                 if (tileImage.Width != tileWidth || tileImage.Height != tileHeight)
-                {
-                    Console.WriteLine("Incorrect dimensions for image " + minimap.FullFilePath)
-                }
+                    Console.WriteLine("Incorrect dimensions for image " + minimap.FullFilePath);
 
                 // Calculate destination position (normalize by subtracting minXTile/minYTile)
                 int destX = (minimap.XTile - minXTile) * tileWidth;
@@ -66,6 +64,75 @@ namespace EQWOWPregenScripts
 
             // Save output image
             outputImage.SaveAsPng(outputFilePath);
+        }
+
+        public static void AdjustPixelBrightness(string sourceImagePath, string targetImagePath, float scaleAmount, int maxBrightness)
+        {
+            // Load source image
+            using var sourceImage = Image.Load<Rgba32>(sourceImagePath);
+
+            // Create target image with same dimensions
+            using var targetImage = new Image<Rgba32>(sourceImage.Width, sourceImage.Height);
+
+            // Process each pixel
+            sourceImage.ProcessPixelRows(accessor =>
+            {
+                for (int y = 0; y < accessor.Height; y++)
+                {
+                    Span<Rgba32> pixelRow = accessor.GetRowSpan(y);
+
+                    for (int x = 0; x < pixelRow.Length; x++)
+                    {
+                        ref Rgba32 pixel = ref pixelRow[x];
+                        float r = pixel.R;
+                        float g = pixel.G;
+                        float b = pixel.B;
+
+                        // Skip black
+                        if (r == 0 && g == 0 && b == 0)
+                        {
+                            targetImage[x, y] = pixel;
+                            continue;
+                        }
+
+                        // Find the minimum component and maximum component for scaling
+                        float minColor = r;
+                        if (minColor == 0 || g < minColor)
+                            minColor = g;
+                        if (minColor == 0 || b < minColor)
+                            minColor = b;
+                        float maxColor = Math.Max(Math.Max(r, g), b);
+
+                        // Only process if within bounds
+                        if (maxColor < maxBrightness)
+                        {
+                            // Calculate scaling factor to bring minComponent to minBrightness
+                            float scale = scaleAmount;
+
+                            // Calculate some possible max values
+                            float possibleR = r * scale;
+                            float possibleG = g * scale;
+                            float possibleB = b * scale;
+
+                            // Reduce scale back if any went above the max
+                            float maxScaledBrightness = Math.Max(Math.Max(possibleR, possibleG), possibleB);
+                            if (maxScaledBrightness > maxBrightness)
+                                scale *= maxBrightness / maxScaledBrightness;
+
+                            // Apply scaling
+                            r *= scale;
+                            g *= scale;
+                            b *= scale;
+                        }
+
+                        // Assign new pixel values to target image
+                        targetImage[x, y] = new Rgba32((byte)Math.Round(r), (byte)Math.Round(g), (byte)Math.Round(b), pixel.A);
+                    }
+                }
+            });
+
+            // Save target image
+            targetImage.SaveAsPng(targetImagePath);
         }
     }
 }
