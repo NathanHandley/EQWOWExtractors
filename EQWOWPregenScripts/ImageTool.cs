@@ -359,7 +359,7 @@ namespace EQWOWPregenScripts
                             using (Image<Rgba32> outputImage = new Image<Rgba32>(fullOutputPixelWidth, fullOutputPixelHeight))
                             {
                                 // Set transparent background
-                                outputImage.Mutate(ctx => ctx.BackgroundColor(Color.Transparent));
+                                outputImage.Mutate(ctx => ctx.BackgroundColor(backgroundColor));
 
                                 // Calculate position to center the scaled image within the borders
                                 int xOffset = leftBorderPixelSize + (availableWidth - scaledWidth) / 2;

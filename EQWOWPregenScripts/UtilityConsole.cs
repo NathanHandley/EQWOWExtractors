@@ -707,8 +707,11 @@ namespace EQWOWPregenScripts
                 string sourceMap = Path.Combine(sourceMapFolder, zoneName + ".png");
                 string targetMapName = Path.Combine(targetMapFolder, zoneName + ".png");
 
+                //ImageTool.GenerateFullMap(sourceMap, targetMapName, contentStartPixelX, contentStartPixelY, contentEndPixelX, contentEndPixelY,
+                //    110, 158, 110, 132, 1024, 768, Color.Transparent, new Color(new Rgba32(0, 0, 0)), 22, 48);
+
                 ImageTool.GenerateFullMap(sourceMap, targetMapName, contentStartPixelX, contentStartPixelY, contentEndPixelX, contentEndPixelY,
-                    110, 158, 110, 132, 1024, 768, Color.Transparent, new Color(new Rgba32(0, 0, 0)), 22, 48);
+                    110, 158, 110, 132, 1024, 768, new Color(new Rgba32(32, 32, 32)), new Color(new Rgba32(131, 131, 131)), 22, 48);
             }
         }
     }
