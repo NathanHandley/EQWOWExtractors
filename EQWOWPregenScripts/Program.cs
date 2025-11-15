@@ -669,7 +669,7 @@ Console.WriteLine("[2] Update Spawn Locations");
 Console.WriteLine("[3] Write tradeskill IDs for produced items in item templates");
 Console.WriteLine("[4] Extract Spells EFF");
 Console.WriteLine("[5] Generate and add spell IDs for worn spells");
-Console.WriteLine("[6] Stich minimaps into maps");
+Console.WriteLine("[6] Stitch minimaps into maps");
 Console.WriteLine("[7] Brighten minimaps");
 Console.WriteLine(" ");
 Console.Write("Command: ");

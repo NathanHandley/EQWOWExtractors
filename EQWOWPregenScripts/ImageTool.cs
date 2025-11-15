@@ -22,7 +22,7 @@ namespace EQWOWPregenScripts
 {
     internal class ImageTool
     {
-        public static void CombineMinimapImages(List<MinimapMetadata> minimaps, string outputFilePath)
+        public static void CombineMinimapImages(List<MinimapMetadata> minimaps, string outputFilePath, out int outputWidth, out int outputHeight)
         {
             // Find minimum and maximum tile indices
             int minXTile = minimaps.Min(m => m.XTile);
@@ -40,8 +40,8 @@ namespace EQWOWPregenScripts
             int tileHeight = firstImage.Height;
 
             // Create output image
-            int outputWidth = columns * tileWidth;
-            int outputHeight = rows * tileHeight;
+            outputWidth = columns * tileWidth;
+            outputHeight = rows * tileHeight;
 
             using var outputImage = new Image<Rgba32>(outputWidth, outputHeight);
 

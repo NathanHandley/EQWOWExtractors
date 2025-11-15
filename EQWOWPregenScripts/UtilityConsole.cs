@@ -611,7 +611,7 @@ namespace EQWOWPregenScripts
         public static void StitchMinimapsIntoMaps()
         {
             // Grab minimap images and sort into zones
-            string sourceMinimapFolder = "E:\\ConverterData\\MinimapsSource";
+            string sourceMinimapFolder = "E:\\ConverterData\\MinimapsTarget";
             string targetStitchedFolder = "E:\\ConverterData\\StitchedMaps";
             if (Directory.Exists(targetStitchedFolder) == true)
                 Directory.Delete(targetStitchedFolder, true);
@@ -637,12 +637,26 @@ namespace EQWOWPregenScripts
                 minimapsByZoneName[minimapMetadata.ZoneName].Add(minimapMetadata);
             }
 
-            // Generate stitched maps for each zone
+            // Generate stitched maps for each zone and write the metadata for it
+            string outputMetadataFile = "E:\\ConverterData\\StitchedMaps\\mapmeta.csv";
+            List<Dictionary<string, string>> outputMetadataRows = new List<Dictionary<string, string>>();
             foreach (var minimapSetForZone in minimapsByZoneName)
             {
                 string outputFilename = Path.Combine(targetStitchedFolder, minimapSetForZone.Key + ".png");
-                ImageTool.CombineMinimapImages(minimapSetForZone.Value, outputFilename);
+                int outputWidth, outputHeight;
+                ImageTool.CombineMinimapImages(minimapSetForZone.Value, outputFilename, out outputWidth, out outputHeight);
+
+                Dictionary<string, string> outputRow = new Dictionary<string, string>();
+                outputRow.Add("ZoneName", minimapSetForZone.Key);
+                outputRow.Add("TileXMin", minimapSetForZone.Value.First().XTile.ToString());
+                outputRow.Add("TileXMax", minimapSetForZone.Value.Last().XTile.ToString());
+                outputRow.Add("TileYMin", minimapSetForZone.Value.First().YTile.ToString());
+                outputRow.Add("TileYMax", minimapSetForZone.Value.Last().YTile.ToString());
+                outputRow.Add("PixelWidth", outputWidth.ToString());
+                outputRow.Add("PixelHeight", outputHeight.ToString());
+                outputMetadataRows.Add(outputRow);
             }
+            FileTool.WriteFile(outputMetadataFile, outputMetadataRows);
         }
 
         public static void BrightenMinimaps()
