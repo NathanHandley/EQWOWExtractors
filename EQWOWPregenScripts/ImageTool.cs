@@ -22,7 +22,8 @@ namespace EQWOWPregenScripts
 {
     internal class ImageTool
     {
-        public static void CombineMinimapImages(List<MinimapMetadata> minimaps, string outputFilePath, out int outputWidth, out int outputHeight)
+        public static void CombineMinimapImages(List<MinimapMetadata> minimaps, string outputFilePath, out int outputWidth, out int outputHeight,
+            out int startPixelX, out int startPixelY, out int endPixelX, out int endPixelY)
         {
             // Find minimum and maximum tile indices
             int minXTile = minimaps.Min(m => m.XTile);
@@ -64,6 +65,27 @@ namespace EQWOWPregenScripts
 
             // Save output image
             outputImage.SaveAsPng(outputFilePath);
+
+            // Calculate bounding rectangle of non-pure-black pixels
+            startPixelX = outputImage.Width;
+            endPixelX = -1;
+            startPixelY = outputImage.Height;
+            endPixelY = -1;
+
+            for (int y = 0; y < outputImage.Height; y++)
+            {
+                for (int x = 0; x < outputImage.Width; x++)
+                {
+                    Rgba32 pixel = outputImage[x, y];
+                    if (pixel.R != 0 || pixel.G != 0 || pixel.B != 0)
+                    {
+                        if (x < startPixelX) startPixelX = x;
+                        if (x > endPixelX) endPixelX = x;
+                        if (y < startPixelY) startPixelY = y;
+                        if (y > endPixelY) endPixelY = y;
+                    }
+                }
+            }
         }
 
         public static void AdjustPixelBrightness(string sourceImagePath, string targetImagePath, float scaleAmount, int maxBrightness)

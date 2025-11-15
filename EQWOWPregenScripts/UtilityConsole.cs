@@ -643,8 +643,9 @@ namespace EQWOWPregenScripts
             foreach (var minimapSetForZone in minimapsByZoneName)
             {
                 string outputFilename = Path.Combine(targetStitchedFolder, minimapSetForZone.Key + ".png");
-                int outputWidth, outputHeight;
-                ImageTool.CombineMinimapImages(minimapSetForZone.Value, outputFilename, out outputWidth, out outputHeight);
+                int outputWidth, outputHeight, startPixelX, startPixelY, endPixelX, endPixelY;
+                ImageTool.CombineMinimapImages(minimapSetForZone.Value, outputFilename, out outputWidth, out outputHeight, out startPixelX, out startPixelY,
+                    out endPixelX, out endPixelY);
 
                 Dictionary<string, string> outputRow = new Dictionary<string, string>();
                 outputRow.Add("ZoneName", minimapSetForZone.Key);
@@ -652,8 +653,12 @@ namespace EQWOWPregenScripts
                 outputRow.Add("TileXMax", minimapSetForZone.Value.Last().XTile.ToString());
                 outputRow.Add("TileYMin", minimapSetForZone.Value.First().YTile.ToString());
                 outputRow.Add("TileYMax", minimapSetForZone.Value.Last().YTile.ToString());
-                outputRow.Add("PixelWidth", outputWidth.ToString());
-                outputRow.Add("PixelHeight", outputHeight.ToString());
+                outputRow.Add("FullPixelWidth", outputWidth.ToString());
+                outputRow.Add("FullPixelHeight", outputHeight.ToString());
+                outputRow.Add("ContentStartPixelX", startPixelX.ToString());
+                outputRow.Add("ContentStartPixelY", startPixelY.ToString());
+                outputRow.Add("ContentEndPixelX", endPixelX.ToString());
+                outputRow.Add("ContentEndPixelY", endPixelY.ToString());
                 outputMetadataRows.Add(outputRow);
             }
             FileTool.WriteFile(outputMetadataFile, outputMetadataRows);
