@@ -664,31 +664,35 @@ using System.Text;
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // Convert tradeskills into a flattened list
 
-Console.WriteLine("[1] Flatten Tradeskill Data");
-Console.WriteLine("[2] Update Spawn Locations");
-Console.WriteLine("[3] Write tradeskill IDs for produced items in item templates");
-Console.WriteLine("[4] Extract Spells EFF");
-Console.WriteLine("[5] Generate and add spell IDs for worn spells");
-Console.WriteLine("[6] Stitch minimaps into maps");
-Console.WriteLine("[7] Brighten minimaps");
-Console.WriteLine("[8] Generate maps");
-Console.WriteLine(" ");
-Console.Write("Command: ");
-string? enteredCommand = Console.ReadLine();
-if (enteredCommand != null)
+while (true)
 {
-    switch (enteredCommand)
+    Console.WriteLine("[1] Flatten Tradeskill Data");
+    Console.WriteLine("[2] Update Spawn Locations");
+    Console.WriteLine("[3] Write tradeskill IDs for produced items in item templates");
+    Console.WriteLine("[4] Extract Spells EFF");
+    Console.WriteLine("[5] Generate and add spell IDs for worn spells");
+    Console.WriteLine("[6] Brighten minimaps");
+    Console.WriteLine("[7] Stitch minimap chunks into one minimap");
+    Console.WriteLine("[8] Generate maps");
+    Console.WriteLine(" ");
+    Console.Write("Command: ");
+    string? enteredCommand = Console.ReadLine();
+    if (enteredCommand != null)
     {
-        case "1": UtilityConsole.ConvertTradeskillsToFlattenedList(); break;
-        case "2": UtilityConsole.UpdateSpawnLocations(); break;
-        case "3": UtilityConsole.UpdateTradeskillReferencesInItemTemplates(); break;
-        case "4": UtilityConsole.ExtractSpellsEFF(); break;
-        case "5": UtilityConsole.GenerateAndAddSpellIDsForWornSpells(); break;
-        case "6": UtilityConsole.StitchMinimapsIntoMaps(); break;
-        case "7": UtilityConsole.BrightenMinimaps(); break;
-        case "8": UtilityConsole.GenerateMaps(); break;
-        default: Console.WriteLine("Unknown command entered"); break;
+        switch (enteredCommand)
+        {
+            case "1": UtilityConsole.ConvertTradeskillsToFlattenedList(); break;
+            case "2": UtilityConsole.UpdateSpawnLocations(); break;
+            case "3": UtilityConsole.UpdateTradeskillReferencesInItemTemplates(); break;
+            case "4": UtilityConsole.ExtractSpellsEFF(); break;
+            case "5": UtilityConsole.GenerateAndAddSpellIDsForWornSpells(); break;
+            case "6": UtilityConsole.BrightenMinimaps(); break;
+            case "7": UtilityConsole.StitchMinimapChunksIntoOneMinimap(); break;
+            case "8": UtilityConsole.GenerateMaps(); break;
+            default: Console.WriteLine("Unknown command entered"); break;
+        }
     }
+    Console.WriteLine("Done....");
+    Console.WriteLine("");
+    Console.ReadKey();
 }
-Console.WriteLine("Done. Press any key...");
-Console.ReadKey();

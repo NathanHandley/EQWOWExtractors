@@ -16,6 +16,8 @@
 
 using System.Text;
 using MySql.Data.MySqlClient;
+using SixLabors.ImageSharp;
+using SixLabors.ImageSharp.PixelFormats;
 
 namespace EQWOWPregenScripts
 {
@@ -608,7 +610,7 @@ namespace EQWOWPregenScripts
                     outputFile.WriteLine(outputLine);
         }
 
-        public static void StitchMinimapsIntoMaps()
+        public static void StitchMinimapChunksIntoOneMinimap()
         {
             // Grab minimap images and sort into zones
             string sourceMinimapFolder = "E:\\ConverterData\\MinimapsTarget";
@@ -706,7 +708,7 @@ namespace EQWOWPregenScripts
                 string targetMapName = Path.Combine(targetMapFolder, zoneName + ".png");
 
                 ImageTool.GenerateFullMap(sourceMap, targetMapName, contentStartPixelX, contentStartPixelY, contentEndPixelX, contentEndPixelY,
-                    110, 158, 110, 132, 1024, 768);
+                    110, 158, 110, 132, 1024, 768, Color.Transparent, new Color(new Rgba32(0, 0, 0)), 22, 48);
             }
         }
     }

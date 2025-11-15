@@ -158,139 +158,253 @@ namespace EQWOWPregenScripts
         }
 
         public static void GenerateFullMap(string inputImageFilePath, string outputImageFilePath, int minPixelX, int minPixelY, int maxPixelX,
-            int maxPixelY, int topBorderPixelSize, int bottomBorderPixelSize, int leftBorderPixelSize, int rightBorderPixelSize, int fullOutputPixelWidth, int fullOutputPixelHeight)
+            int maxPixelY, int topBorderPixelSize, int bottomBorderPixelSize, int leftBorderPixelSize, int rightBorderPixelSize, int fullOutputPixelWidth, int fullOutputPixelHeight,
+            Color backgroundColor, Color borderColor, int transparentRightWidth, int transparentBottomHeight)
         {
             // Load the input image
             using (Image<Rgba32> inputImage = Image.Load<Rgba32>(inputImageFilePath))
             {
-                // Replace pure black pixels with transparency if an adjacent pixel is not black
-                inputImage.ProcessPixelRows(accessor =>
+                // Create a new in-memory image with 2 pixels larger dimensions
+                int paddedWidth = inputImage.Width + 2;
+                int paddedHeight = inputImage.Height + 2;
+                using (Image<Rgba32> paddedImage = new Image<Rgba32>(paddedWidth, paddedHeight))
                 {
-                    // Create a copy of the pixel data to avoid modifying while reading
-                    Rgba32[,] pixelCopy = new Rgba32[inputImage.Height, inputImage.Width];
-                    for (int y = 0; y < inputImage.Height; y++)
-                    {
-                        Span<Rgba32> row = accessor.GetRowSpan(y);
-                        for (int x = 0; x < inputImage.Width; x++)
-                        {
-                            pixelCopy[y, x] = row[x];
-                        }
-                    }
+                    // Set the background color
+                    paddedImage.Mutate(ctx => ctx.BackgroundColor(backgroundColor));
 
-                    // Process each pixel
-                    for (int y = 0; y < inputImage.Height; y++)
+                    // Copy the inputImage into the center of the paddedImage
+                    paddedImage.Mutate(ctx => ctx.DrawImage(inputImage, new Point(1, 1), 1f));
+
+                    // Calculate crop rectangle
+                    int cropWidth = maxPixelX - minPixelX;
+                    int cropHeight = maxPixelY - minPixelY;
+
+                    // Crop the image
+                    using (Image<Rgba32> croppedImage = paddedImage.Clone(ctx => ctx.Crop(new Rectangle(minPixelX, minPixelY, cropWidth, cropHeight))))
                     {
-                        Span<Rgba32> row = accessor.GetRowSpan(y);
-                        for (int x = 0; x < inputImage.Width; x++)
+                        // Find the bounding box of non-transparent pixels
+                        int minX = cropWidth, minY = cropHeight, maxX = -1, maxY = -1;
+                        croppedImage.ProcessPixelRows(accessor =>
                         {
-                            // Check if the pixel is pure black
-                            if (pixelCopy[y, x].R == 0 && pixelCopy[y, x].G == 0 && pixelCopy[y, x].B == 0)
+                            for (int y = 0; y < croppedImage.Height; y++)
                             {
-                                bool hasNonBlackNeighbor = false;
-
-                                // Check top neighbor
-                                if (y > 0)
+                                Span<Rgba32> row = accessor.GetRowSpan(y);
+                                for (int x = 0; x < croppedImage.Width; x++)
                                 {
-                                    Rgba32 top = pixelCopy[y - 1, x];
-                                    if (top.R > 0 || top.G > 0 || top.B > 0)
+                                    if (row[x].A > 0)
                                     {
-                                        hasNonBlackNeighbor = true;
+                                        if (x < minX) minX = x;
+                                        if (x > maxX) maxX = x;
+                                        if (y < minY) minY = y;
+                                        if (y > maxY) maxY = y;
                                     }
-                                }
-
-                                // Check bottom neighbor
-                                if (y < inputImage.Height - 1)
-                                {
-                                    Rgba32 bottom = pixelCopy[y + 1, x];
-                                    if (bottom.R > 0 || bottom.G > 0 || bottom.B > 0)
-                                    {
-                                        hasNonBlackNeighbor = true;
-                                    }
-                                }
-
-                                // Check left neighbor
-                                if (x > 0)
-                                {
-                                    Rgba32 left = pixelCopy[y, x - 1];
-                                    if (left.R > 0 || left.G > 0 || left.B > 0)
-                                    {
-                                        hasNonBlackNeighbor = true;
-                                    }
-                                }
-
-                                // Check right neighbor
-                                if (x < inputImage.Width - 1)
-                                {
-                                    Rgba32 right = pixelCopy[y, x + 1];
-                                    if (right.R > 0 || right.G > 0 || right.B > 0)
-                                    {
-                                        hasNonBlackNeighbor = true;
-                                    }
-                                }
-
-                                // Replace with transparency unless a non-black neighbor exists
-                                if (hasNonBlackNeighbor == false)
-                                {
-                                    row[x] = Color.Transparent;
                                 }
                             }
-                        }
-                    }
-                });
+                        });
 
-                // Calculate crop rectangle
-                int cropWidth = maxPixelX - minPixelX;
-                int cropHeight = maxPixelY - minPixelY;
-
-                // Crop the image
-                using (Image<Rgba32> croppedImage = inputImage.Clone(ctx => ctx.Crop(new Rectangle(minPixelX, minPixelY, cropWidth, cropHeight))))
-                {
-                    // Calculate scaling to fit within output dimensions, accounting for borders
-                    int availableWidth = fullOutputPixelWidth - (leftBorderPixelSize + rightBorderPixelSize);
-                    int availableHeight = fullOutputPixelHeight - (topBorderPixelSize + bottomBorderPixelSize);
-
-                    // Maintain aspect ratio
-                    float aspectRatio = (float)cropWidth / cropHeight;
-                    int scaledWidth;
-                    int scaledHeight;
-
-                    if (aspectRatio > (float)availableWidth / availableHeight)
-                    {
-                        // Image is wider relative to available space
-                        scaledWidth = availableWidth;
-                        scaledHeight = (int)(availableWidth / aspectRatio);
-                    }
-                    else
-                    {
-                        // Image is taller relative to available space
-                        scaledHeight = availableHeight;
-                        scaledWidth = (int)(availableHeight * aspectRatio);
-                    }
-
-                    // Create final output image with transparent background
-                    using (Image<Rgba32> outputImage = new Image<Rgba32>(fullOutputPixelWidth, fullOutputPixelHeight))
-                    {
-                        // Set transparent background
-                        outputImage.Mutate(ctx => ctx.BackgroundColor(Color.Transparent));
-
-                        // Calculate position to center the scaled image within the borders
-                        int xOffset = leftBorderPixelSize + (availableWidth - scaledWidth) / 2;
-                        int yOffset = topBorderPixelSize + (availableHeight - scaledHeight) / 2;
-
-                        // Resize the cropped image
-                        using (Image<Rgba32> resizedImage = croppedImage.Clone(ctx => ctx.Resize(new ResizeOptions
+                        // Create a new image with space for a 1-pixel black border
+                        int borderedWidth = cropWidth + 2;
+                        int borderedHeight = cropHeight + 2;
+                        using (Image<Rgba32> borderedImage = new Image<Rgba32>(borderedWidth, borderedHeight))
                         {
-                            Size = new Size(scaledWidth, scaledHeight),
-                            Mode = ResizeMode.Stretch,
-                            Sampler = KnownResamplers.Lanczos3
-                        })))
-                        {
-                            // Draw the resized image onto the output
-                            outputImage.Mutate(ctx => ctx.DrawImage(resizedImage, new Point(xOffset, yOffset), 1f));
-                        }
+                            // Set transparent background
+                            borderedImage.Mutate(ctx => ctx.BackgroundColor(Color.Transparent));
 
-                        // Save output image as PNG
-                        outputImage.SaveAsPng(outputImageFilePath);
+                            // This processes all rows but only sets pixels in the border regions for safety and simplicity
+                            borderedImage.ProcessPixelRows(accessor =>
+                            {
+                                int borderMinX = minX + 1;
+                                int borderMinY = minY + 1;
+                                int borderMaxX = maxX + 1;
+                                int borderMaxY = maxY + 1;
+
+                                for (int y = 0; y < borderedImage.Height; y++)
+                                {
+                                    Span<Rgba32> row = accessor.GetRowSpan(y);
+
+                                    // Top border: 1 pixel above borderMinY, spanning x-range
+                                    if (y == borderMinY - 1)
+                                    {
+                                        for (int x = borderMinX - 1; x <= borderMaxX + 1; x++)
+                                        {
+                                            row[x] = Color.Black;
+                                        }
+                                    }
+
+                                    // Bottom border: 1 pixel below borderMaxY, spanning x-range
+                                    if (y == borderMaxY + 1)
+                                    {
+                                        for (int x = borderMinX - 1; x <= borderMaxX + 1; x++)
+                                        {
+                                            row[x] = Color.Black;
+                                        }
+                                    }
+
+                                    // Left border: 1 pixel left of borderMinX, for this y if in range
+                                    if (y >= borderMinY - 1 && y <= borderMaxY + 1 && borderMinX - 1 >= 0 && borderMinX - 1 < borderedWidth)
+                                    {
+                                        row[borderMinX - 1] = Color.Black;
+                                    }
+
+                                    // Right border: 1 pixel right of borderMaxX, for this y if in range
+                                    if (y >= borderMinY - 1 && y <= borderMaxY + 1 && borderMaxX + 1 >= 0 && borderMaxX + 1 < borderedWidth)
+                                    {
+                                        row[borderMaxX + 1] = Color.Black;
+                                    }
+                                }
+                            });
+
+                            // Copy the cropped image into the bordered image
+                            borderedImage.Mutate(ctx => ctx.DrawImage(croppedImage, new Point(1, 1), 1f));
+
+                            // Replace pure black pixels with transparency if an adjacent pixel is not black
+                            borderedImage.ProcessPixelRows(accessor =>
+                            {
+                                // Create a copy of the pixel data to avoid modifying while reading
+                                Rgba32[,] pixelCopy = new Rgba32[borderedImage.Height, borderedImage.Width];
+                                for (int y = 0; y < borderedImage.Height; y++)
+                                {
+                                    Span<Rgba32> row = accessor.GetRowSpan(y);
+                                    for (int x = 0; x < borderedImage.Width; x++)
+                                    {
+                                        pixelCopy[y, x] = row[x];
+                                    }
+                                }
+
+                                // Process each pixel
+                                for (int y = 0; y < borderedImage.Height; y++)
+                                {
+                                    Span<Rgba32> row = accessor.GetRowSpan(y);
+                                    for (int x = 0; x < borderedImage.Width; x++)
+                                    {
+                                        // Check if the pixel is pure black
+                                        if (pixelCopy[y, x].R == 0 && pixelCopy[y, x].G == 0 && pixelCopy[y, x].B == 0)
+                                        {
+                                            bool hasNonBlackNeighbor = false;
+
+                                            // Check top neighbor
+                                            if (y > 0)
+                                            {
+                                                Rgba32 top = pixelCopy[y - 1, x];
+                                                if (top.R > 0 || top.G > 0 || top.B > 0)
+                                                {
+                                                    hasNonBlackNeighbor = true;
+                                                }
+                                            }
+
+                                            // Check bottom neighbor
+                                            if (y < borderedImage.Height - 1)
+                                            {
+                                                Rgba32 bottom = pixelCopy[y + 1, x];
+                                                if (bottom.R > 0 || bottom.G > 0 || bottom.B > 0)
+                                                {
+                                                    hasNonBlackNeighbor = true;
+                                                }
+                                            }
+
+                                            // Check left neighbor
+                                            if (x > 0)
+                                            {
+                                                Rgba32 left = pixelCopy[y, x - 1];
+                                                if (left.R > 0 || left.G > 0 || left.B > 0)
+                                                {
+                                                    hasNonBlackNeighbor = true;
+                                                }
+                                            }
+
+                                            // Check right neighbor
+                                            if (x < borderedImage.Width - 1)
+                                            {
+                                                Rgba32 right = pixelCopy[y, x + 1];
+                                                if (right.R > 0 || right.G > 0 || right.B > 0)
+                                                {
+                                                    hasNonBlackNeighbor = true;
+                                                }
+                                            }
+
+                                            // Either set it as background or border color
+                                            if (hasNonBlackNeighbor == false)
+                                                row[x] = backgroundColor;
+                                            else
+                                                row[x] = borderColor;
+
+                                        }
+                                    }
+                                }
+                            });
+
+                            // Calculate scaling to fit within output dimensions, accounting for borders
+                            int availableWidth = fullOutputPixelWidth - (leftBorderPixelSize + rightBorderPixelSize);
+                            int availableHeight = fullOutputPixelHeight - (topBorderPixelSize + bottomBorderPixelSize);
+
+                            // Maintain aspect ratio
+                            float aspectRatio = (float)borderedWidth / borderedHeight;
+                            int scaledWidth;
+                            int scaledHeight;
+
+                            if (aspectRatio > (float)availableWidth / availableHeight)
+                            {
+                                // Image is wider relative to available space
+                                scaledWidth = availableWidth;
+                                scaledHeight = (int)(availableWidth / aspectRatio);
+                            }
+                            else
+                            {
+                                // Image is taller relative to available space
+                                scaledHeight = availableHeight;
+                                scaledWidth = (int)(availableHeight * aspectRatio);
+                            }
+
+                            // Create final output image with transparent background
+                            using (Image<Rgba32> outputImage = new Image<Rgba32>(fullOutputPixelWidth, fullOutputPixelHeight))
+                            {
+                                // Set transparent background
+                                outputImage.Mutate(ctx => ctx.BackgroundColor(Color.Transparent));
+
+                                // Calculate position to center the scaled image within the borders
+                                int xOffset = leftBorderPixelSize + (availableWidth - scaledWidth) / 2;
+                                int yOffset = topBorderPixelSize + (availableHeight - scaledHeight) / 2;
+
+                                // Resize the bordered image
+                                using (Image<Rgba32> resizedImage = borderedImage.Clone(ctx => ctx.Resize(new ResizeOptions
+                                {
+                                    Size = new Size(scaledWidth, scaledHeight),
+                                    Mode = ResizeMode.Stretch,
+                                    Sampler = KnownResamplers.Lanczos3
+                                })))
+                                {
+                                    // Draw the resized image onto the output
+                                    outputImage.Mutate(ctx => ctx.DrawImage(resizedImage, new Point(xOffset, yOffset), 1f));
+                                }
+
+                                // Replace specified pixels on right and bottom edges with transparent
+                                outputImage.ProcessPixelRows(accessor =>
+                                {
+                                    // Replace right edge pixels
+                                    for (int y = 0; y < outputImage.Height; y++)
+                                    {
+                                        Span<Rgba32> row = accessor.GetRowSpan(y);
+                                        for (int x = outputImage.Width - transparentRightWidth; x < outputImage.Width; x++)
+                                        {
+                                            row[x] = Color.Transparent;
+                                        }
+                                    }
+
+                                    // Replace bottom edge pixels (re-process rows to avoid overlap issues)
+                                    for (int y = outputImage.Height - transparentBottomHeight; y < outputImage.Height; y++)
+                                    {
+                                        Span<Rgba32> row = accessor.GetRowSpan(y);
+                                        for (int x = 0; x < outputImage.Width - transparentRightWidth; x++)
+                                        {
+                                            row[x] = Color.Transparent;
+                                        }
+                                    }
+                                });
+
+                                // Save output image as PNG
+                                outputImage.SaveAsPng(outputImageFilePath);
+                            }
+                        }
                     }
                 }
             }
