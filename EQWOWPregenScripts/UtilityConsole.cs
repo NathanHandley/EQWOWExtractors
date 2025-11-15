@@ -678,5 +678,36 @@ namespace EQWOWPregenScripts
                 ImageTool.AdjustPixelBrightness(sourceMinimapFullPath, outputMinimapFullPath, 1.5f, 255);
             }
         }
+
+        public static void GenerateMaps()
+        {
+            string sourceMapFolder = "E:\\ConverterData\\StitchedMaps";
+            string targetMapFolder = "E:\\ConverterData\\ProcessedMaps";
+            if (Directory.Exists(targetMapFolder) == true)
+                Directory.Delete(targetMapFolder, true);
+            Directory.CreateDirectory(targetMapFolder);
+            string sourceMetadataFileFullPath = "E:\\ConverterData\\StitchedMaps\\mapmeta.csv";
+            List<Dictionary<string, string>> mapMetadataRows = FileTool.ReadAllRowsFromFileWithHeader(sourceMetadataFileFullPath, "|");
+            foreach (Dictionary<string, string> mapMetadataColumns in mapMetadataRows)
+            {
+                string zoneName = mapMetadataColumns["ZoneName"];
+                //int tileXMin = int.Parse(mapMetadataColumns["TileXMin"]);
+                //int tileXMax = int.Parse(mapMetadataColumns["TileXMax"]);
+                //int tileYMin = int.Parse(mapMetadataColumns["TileYMin"]);
+                //int tileYMax = int.Parse(mapMetadataColumns["TileYMax"]);
+                int fullPixelWidth = int.Parse(mapMetadataColumns["FullPixelWidth"]);
+                int fullPixelHeight = int.Parse(mapMetadataColumns["FullPixelHeight"]);
+                int contentStartPixelX = int.Parse(mapMetadataColumns["ContentStartPixelX"]);
+                int contentStartPixelY = int.Parse(mapMetadataColumns["ContentStartPixelY"]);
+                int contentEndPixelX = int.Parse(mapMetadataColumns["ContentEndPixelX"]);
+                int contentEndPixelY = int.Parse(mapMetadataColumns["ContentEndPixelY"]);
+
+                string sourceMap = Path.Combine(sourceMapFolder, zoneName + ".png");
+                string targetMapName = Path.Combine(targetMapFolder, zoneName + ".png");
+
+                ImageTool.GenerateFullMap(sourceMap, targetMapName, contentStartPixelX, contentStartPixelY, contentEndPixelX, contentEndPixelY,
+                    110, 158, 110, 132, 1024, 768);
+            }
+        }
     }
 }

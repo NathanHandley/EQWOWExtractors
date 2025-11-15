@@ -671,6 +671,7 @@ Console.WriteLine("[4] Extract Spells EFF");
 Console.WriteLine("[5] Generate and add spell IDs for worn spells");
 Console.WriteLine("[6] Stitch minimaps into maps");
 Console.WriteLine("[7] Brighten minimaps");
+Console.WriteLine("[8] Generate maps");
 Console.WriteLine(" ");
 Console.Write("Command: ");
 string? enteredCommand = Console.ReadLine();
@@ -685,6 +686,7 @@ if (enteredCommand != null)
         case "5": UtilityConsole.GenerateAndAddSpellIDsForWornSpells(); break;
         case "6": UtilityConsole.StitchMinimapsIntoMaps(); break;
         case "7": UtilityConsole.BrightenMinimaps(); break;
+        case "8": UtilityConsole.GenerateMaps(); break;
         default: Console.WriteLine("Unknown command entered"); break;
     }
 }
