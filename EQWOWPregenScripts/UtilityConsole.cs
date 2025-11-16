@@ -693,10 +693,6 @@ namespace EQWOWPregenScripts
             foreach (Dictionary<string, string> mapMetadataColumns in mapMetadataRows)
             {
                 string zoneName = mapMetadataColumns["ZoneName"];
-                //int tileXMin = int.Parse(mapMetadataColumns["TileXMin"]);
-                //int tileXMax = int.Parse(mapMetadataColumns["TileXMax"]);
-                //int tileYMin = int.Parse(mapMetadataColumns["TileYMin"]);
-                //int tileYMax = int.Parse(mapMetadataColumns["TileYMax"]);
                 int fullPixelWidth = int.Parse(mapMetadataColumns["FullPixelWidth"]);
                 int fullPixelHeight = int.Parse(mapMetadataColumns["FullPixelHeight"]);
                 int contentStartPixelX = int.Parse(mapMetadataColumns["ContentStartPixelX"]);
@@ -709,9 +705,11 @@ namespace EQWOWPregenScripts
 
                 //ImageTool.GenerateFullMap(sourceMap, targetMapName, contentStartPixelX, contentStartPixelY, contentEndPixelX, contentEndPixelY,
                 //    110, 158, 110, 132, 1024, 768, Color.Transparent, new Color(new Rgba32(0, 0, 0)), 22, 48);
-
+                int scaledWidth, scaledHeight;
                 ImageTool.GenerateFullMap(sourceMap, targetMapName, contentStartPixelX, contentStartPixelY, contentEndPixelX, contentEndPixelY,
-                    110, 158, 110, 132, 1024, 768, new Color(new Rgba32(32, 32, 32)), new Color(new Rgba32(131, 131, 131)), 22, 48);
+                    100, 100, 100, 100, 1024, 768, new Color(new Rgba32(32, 32, 32)), new Color(new Rgba32(131, 131, 131)), 22, 100, out scaledWidth, out scaledHeight);
+
+
             }
         }
     }
