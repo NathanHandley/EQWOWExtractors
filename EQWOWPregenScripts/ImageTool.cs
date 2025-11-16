@@ -160,7 +160,7 @@ namespace EQWOWPregenScripts
         public static void GenerateFullMap(string inputImageFilePath, string outputImageFilePath, int minPixelX, int minPixelY, int maxPixelX,
             int maxPixelY, int topBorderPixelSize, int bottomBorderPixelSize, int leftBorderPixelSize, int rightBorderPixelSize, int fullOutputPixelWidth, int fullOutputPixelHeight,
             Color backgroundColor, Color borderColor, int transparentRightWidth, int transparentBottomHeight,
-            out int rescaledWidth, out int rescaledHeight)
+            out float contentWidthScaledProportion, out float contentHeightScaledProportion)
         {
             // Load the input image
             using (Image<Rgba32> inputImage = Image.Load<Rgba32>(inputImageFilePath))
@@ -356,8 +356,8 @@ namespace EQWOWPregenScripts
                                 scaledWidth = (int)(availableHeight * aspectRatio);
                             }
 
-                            rescaledWidth = scaledWidth;
-                            rescaledHeight = scaledHeight;
+                            contentWidthScaledProportion = (float)scaledWidth / (float)availableWidth;
+                            contentHeightScaledProportion = (float)scaledHeight / (float)availableHeight;
 
                             // Create final output image with transparent background
                             using (Image<Rgba32> outputImage = new Image<Rgba32>(fullOutputPixelWidth, fullOutputPixelHeight))

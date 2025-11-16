@@ -24,6 +24,10 @@ namespace EQWOWPregenScripts
     internal class UtilityConsole
     {
         private static string ConnectionString = "Server=127.0.0.1;Database=acore_world;Uid=scriptread;Pwd=scriptreadpass;";
+        private static readonly int MAP_OUTPUT_LEFT_BORDER_PIXEL_SIZE = 0; //30;
+        private static readonly int MAP_OUTPUT_RIGHT_BORDER_PIXEL_SIZE = 0; //30;
+        private static readonly int MAP_OUTPUT_TOP_BORDER_PIXEL_SIZE = 0; //30;
+        private static readonly int MAP_OUTPUT_BOTTOM_BORDER_PIXEL_SIZE = 0; //30;
 
         public static void ConvertTradeskillsToFlattenedList()
         {
@@ -649,6 +653,39 @@ namespace EQWOWPregenScripts
                 ImageTool.CombineMinimapImages(minimapSetForZone.Value, outputFilename, out outputWidth, out outputHeight, out startPixelX, out startPixelY,
                     out endPixelX, out endPixelY);
 
+                ///
+                /////
+                /////////////////////////////////////////////////////////////////////////
+                // Need to know what percent of crop was done above and below all zeroes
+                /////////////////////////////////////////////////////////////////////////
+                /////
+                ///
+
+                // Find minimum and maximum tile indices
+                int minXTile = minimapSetForZone.Value.Min(m => m.XTile);
+                int maxXTile = minimapSetForZone.Value.Max(m => m.XTile);
+                int minYTile = minimapSetForZone.Value.Min(m => m.YTile);
+                int maxYTile = minimapSetForZone.Value.Max(m => m.YTile);
+
+                // Calculate world coordinates from the map outputs
+                float tileLengthInUnits = 1600f / 3f; // Comes out to 533.333 repeat, doing the math here to make it be as exact as possible
+                int numOfYTiles = (maxYTile - minYTile) + 1;
+                int sizeOfTileInPixelsAcross = outputHeight / numOfYTiles; // Tiles are square, so this works for both dimensions
+                float worldUnitsPerPixel = tileLengthInUnits / (float)sizeOfTileInPixelsAcross;
+                int zeroPixelOnY = (32 - minYTile) * sizeOfTileInPixelsAcross;
+                int zeroPixelOnX = (32 - minXTile) * sizeOfTileInPixelsAcross;
+
+                // Add the pixel border
+                int pixelsDown = (endPixelY - zeroPixelOnY) + 1;
+                int pixelsUp = (zeroPixelOnY - startPixelY) + 1;
+                int pixelsLeft = (zeroPixelOnX - startPixelX) + 1;
+                int pixelsRight = (endPixelX - zeroPixelOnX) + 1;
+                
+                float northMaxCoordinate = (float)pixelsUp * worldUnitsPerPixel;
+                float southMaxCoordinate = (float)pixelsDown * worldUnitsPerPixel * -1f;
+                float westMaxCoordinate = (float)pixelsLeft * worldUnitsPerPixel;
+                float eastMaxCoordinate = (float)pixelsRight * worldUnitsPerPixel * -1f;
+
                 Dictionary<string, string> outputRow = new Dictionary<string, string>();
                 outputRow.Add("ZoneName", minimapSetForZone.Key);
                 outputRow.Add("TileXMin", minimapSetForZone.Value.First().XTile.ToString());
@@ -661,6 +698,12 @@ namespace EQWOWPregenScripts
                 outputRow.Add("ContentStartPixelY", startPixelY.ToString());
                 outputRow.Add("ContentEndPixelX", endPixelX.ToString());
                 outputRow.Add("ContentEndPixelY", endPixelY.ToString());
+                outputRow.Add("WorldCoordNorth", northMaxCoordinate.ToString());
+                outputRow.Add("WorldCoordSouth", southMaxCoordinate.ToString());
+                outputRow.Add("WorldCoordWest", westMaxCoordinate.ToString());
+                outputRow.Add("WorldCoordEast", eastMaxCoordinate.ToString());
+                outputRow.Add("WorldUnitsPerPixel", worldUnitsPerPixel.ToString());
+
                 outputMetadataRows.Add(outputRow);
             }
             FileTool.WriteFile(outputMetadataFile, outputMetadataRows);
@@ -699,18 +742,42 @@ namespace EQWOWPregenScripts
                 int contentStartPixelY = int.Parse(mapMetadataColumns["ContentStartPixelY"]);
                 int contentEndPixelX = int.Parse(mapMetadataColumns["ContentEndPixelX"]);
                 int contentEndPixelY = int.Parse(mapMetadataColumns["ContentEndPixelY"]);
+                int tileXMin = int.Parse(mapMetadataColumns["TileXMin"]);
+                int tileXMax = int.Parse(mapMetadataColumns["TileXMax"]);
+                int tileYMin = int.Parse(mapMetadataColumns["TileYMin"]);
+                int tileYMax = int.Parse(mapMetadataColumns["TileYMax"]);
+                float worldCoordNorth = float.Parse(mapMetadataColumns["WorldCoordNorth"]);
+                float worldCoordSouth = float.Parse(mapMetadataColumns["WorldCoordSouth"]);
+                float worldCoordWest = float.Parse(mapMetadataColumns["WorldCoordWest"]);
+                float worldCoordEast = float.Parse(mapMetadataColumns["WorldCoordEast"]);
+                float worldUnitsPerPixel = float.Parse(mapMetadataColumns["WorldUnitsPerPixel"]);
 
                 string sourceMap = Path.Combine(sourceMapFolder, zoneName + ".png");
                 string targetMapName = Path.Combine(targetMapFolder, zoneName + ".png");
 
-                //ImageTool.GenerateFullMap(sourceMap, targetMapName, contentStartPixelX, contentStartPixelY, contentEndPixelX, contentEndPixelY,
-                //    110, 158, 110, 132, 1024, 768, Color.Transparent, new Color(new Rgba32(0, 0, 0)), 22, 48);
-                int scaledWidth, scaledHeight;
+                float scaledOutputWidth, scaledOutputHeight;
                 ImageTool.GenerateFullMap(sourceMap, targetMapName, contentStartPixelX, contentStartPixelY, contentEndPixelX, contentEndPixelY,
-                    100, 100, 100, 100, 1024, 768, new Color(new Rgba32(32, 32, 32)), new Color(new Rgba32(131, 131, 131)), 22, 100, out scaledWidth, out scaledHeight);
+                    MAP_OUTPUT_TOP_BORDER_PIXEL_SIZE, MAP_OUTPUT_BOTTOM_BORDER_PIXEL_SIZE, MAP_OUTPUT_LEFT_BORDER_PIXEL_SIZE, MAP_OUTPUT_RIGHT_BORDER_PIXEL_SIZE, 
+                    1024, 768, new Color(new Rgba32(32, 32, 32)), new Color(new Rgba32(131, 131, 131)), 22, 100, out scaledOutputWidth, out scaledOutputHeight);
 
+                if (zoneName.Contains("freportw") == true)
+                {
+                    int x = 5;
+                }
 
+                // Apply scale to world coordinates, and factor for the transparent border
+                worldCoordNorth = (worldCoordNorth * (2f - scaledOutputHeight)) + (worldUnitsPerPixel * (float)(MAP_OUTPUT_TOP_BORDER_PIXEL_SIZE ) * (2f - scaledOutputHeight));
+                worldCoordSouth = (worldCoordSouth * (2f - scaledOutputHeight)) + (worldUnitsPerPixel * (float)(MAP_OUTPUT_BOTTOM_BORDER_PIXEL_SIZE) * (2f - scaledOutputHeight));
+                worldCoordWest = (worldCoordWest * (2f - scaledOutputWidth)) + (worldUnitsPerPixel * (float)(MAP_OUTPUT_LEFT_BORDER_PIXEL_SIZE) * (2f - scaledOutputWidth));
+                worldCoordEast = (worldCoordEast * (2f - scaledOutputWidth)) + (worldUnitsPerPixel * (float)(MAP_OUTPUT_RIGHT_BORDER_PIXEL_SIZE) * (2f - scaledOutputWidth));
+
+                mapMetadataColumns.Add("WorldCoordNorthScaled", worldCoordNorth.ToString());
+                mapMetadataColumns.Add("WorldCoordSouthScaled", worldCoordSouth.ToString());
+                mapMetadataColumns.Add("WorldCoordWestScaled", worldCoordWest.ToString());
+                mapMetadataColumns.Add("WorldCoordEastScaled", worldCoordEast.ToString());
             }
+            string targetMetadataFileFullPath = "E:\\ConverterData\\ProcessedMaps\\mapmeta.csv";
+            FileTool.WriteFile(targetMetadataFileFullPath, mapMetadataRows);
         }
     }
 }
