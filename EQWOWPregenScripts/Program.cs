@@ -674,6 +674,7 @@ while (true)
     Console.WriteLine("[6] Brighten minimaps");
     Console.WriteLine("[7] Stitch minimap chunks into one minimap");
     Console.WriteLine("[8] Generate maps");
+    Console.WriteLine("[9] Generate maps (new)");
     Console.WriteLine(" ");
     Console.Write("Command: ");
     string? enteredCommand = Console.ReadLine();
@@ -689,6 +690,7 @@ while (true)
             case "6": UtilityConsole.BrightenMinimaps(); break;
             case "7": UtilityConsole.StitchMinimapChunksIntoOneMinimap(); break;
             case "8": UtilityConsole.GenerateMaps(); break;
+            case "9": UtilityConsole.GenerateMapsNew(); break;
             default: Console.WriteLine("Unknown command entered"); break;
         }
     }

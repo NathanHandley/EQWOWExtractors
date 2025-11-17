@@ -88,6 +88,154 @@ namespace EQWOWPregenScripts
             }
         }
 
+        public static void CombineMinimapImagesWithBorderAndCrop(List<MinimapMetadata> minimaps, string outputFilePath, Rgba32 borderColorValue, out int outputWidth, 
+            out int outputHeight, out int startPixelX, out int startPixelY, out int endPixelX, out int endPixelY)
+        {
+            Color borderColor = new Color(borderColorValue);
+
+            // Find minimum and maximum tile indices
+            int minXTile = minimaps.Min(m => m.XTile);
+            int maxXTile = minimaps.Max(m => m.XTile);
+            int minYTile = minimaps.Min(m => m.YTile);
+            int maxYTile = minimaps.Max(m => m.YTile);
+
+            // Calculate grid dimensions (normalized to start at 0,0)
+            int columns = maxXTile - minXTile + 1;
+            int rows = maxYTile - minYTile + 1;
+
+            // Load first image to get dimensions (assuming all images are same size)
+            using var firstImage = Image.Load<Rgba32>(minimaps[0].FullFilePath);
+            int tileWidth = firstImage.Width;
+            int tileHeight = firstImage.Height;
+
+            // Create output image, including a pixel border
+            outputWidth = columns * tileWidth + 2;
+            outputHeight = rows * tileHeight + 2;
+
+            using var combinedImage = new Image<Rgba32>(outputWidth, outputHeight);
+
+            // Process each minimap by copying it into the larger image
+            foreach (var minimap in minimaps)
+            {
+                using var tileImage = Image.Load<Rgba32>(minimap.FullFilePath);
+
+                // Verify tile image dimensions match
+                if (tileImage.Width != tileWidth || tileImage.Height != tileHeight)
+                    Console.WriteLine("Incorrect dimensions for image " + minimap.FullFilePath);
+
+                // Calculate destination position (normalize by subtracting minXTile/minYTile)
+                int destX = ((minimap.XTile - minXTile) * tileWidth) + 1;
+                int destY = ((minimap.YTile - minYTile) * tileHeight) + 1;
+
+                // Copy tile to output image
+                combinedImage.Mutate(ctx => ctx.DrawImage(tileImage, new Point(destX, destY), 1f));
+            }
+
+            // Go around the image and add a border
+            combinedImage.ProcessPixelRows(accessor =>
+            {
+                // Create a copy of the pixel data to avoid modifying while reading
+                Rgba32[,] pixelCopy = new Rgba32[combinedImage.Height, combinedImage.Width];
+                for (int y = 0; y < combinedImage.Height; y++)
+                {
+                    Span<Rgba32> row = accessor.GetRowSpan(y);
+                    for (int x = 0; x < combinedImage.Width; x++)
+                    {
+                        pixelCopy[y, x] = row[x];
+                    }
+                }
+
+                // Process each pixel
+                for (int y = 0; y < combinedImage.Height; y++)
+                {
+                    Span<Rgba32> row = accessor.GetRowSpan(y);
+                    for (int x = 0; x < combinedImage.Width; x++)
+                    {
+                        // Check if the pixel is pure black
+                        if (pixelCopy[y, x].R == 0 && pixelCopy[y, x].G == 0 && pixelCopy[y, x].B == 0)
+                        {
+                            bool hasNonBlackNeighbor = false;
+
+                            // Check top neighbor
+                            if (y > 0)
+                            {
+                                Rgba32 top = pixelCopy[y - 1, x];
+                                if (top.R > 0 || top.G > 0 || top.B > 0)
+                                {
+                                    hasNonBlackNeighbor = true;
+                                }
+                            }
+
+                            // Check bottom neighbor
+                            if (y < combinedImage.Height - 1)
+                            {
+                                Rgba32 bottom = pixelCopy[y + 1, x];
+                                if (bottom.R > 0 || bottom.G > 0 || bottom.B > 0)
+                                {
+                                    hasNonBlackNeighbor = true;
+                                }
+                            }
+
+                            // Check left neighbor
+                            if (x > 0)
+                            {
+                                Rgba32 left = pixelCopy[y, x - 1];
+                                if (left.R > 0 || left.G > 0 || left.B > 0)
+                                {
+                                    hasNonBlackNeighbor = true;
+                                }
+                            }
+
+                            // Check right neighbor
+                            if (x < combinedImage.Width - 1)
+                            {
+                                Rgba32 right = pixelCopy[y, x + 1];
+                                if (right.R > 0 || right.G > 0 || right.B > 0)
+                                {
+                                    hasNonBlackNeighbor = true;
+                                }
+                            }
+
+                            // Set the border color
+                            if (hasNonBlackNeighbor == true)
+                                row[x] = borderColor;
+
+                        }
+                    }
+                }
+            });
+
+            // Calculate bounding rectangle of non-pure-black pixels
+            startPixelX = combinedImage.Width;
+            endPixelX = -1;
+            startPixelY = combinedImage.Height;
+            endPixelY = -1;
+
+            for (int y = 0; y < combinedImage.Height; y++)
+            {
+                for (int x = 0; x < combinedImage.Width; x++)
+                {
+                    Rgba32 pixel = combinedImage[x, y];
+                    if (pixel.R != 0 || pixel.G != 0 || pixel.B != 0)
+                    {
+                        if (x < startPixelX) startPixelX = x;
+                        if (x > endPixelX) endPixelX = x;
+                        if (y < startPixelY) startPixelY = y;
+                        if (y > endPixelY) endPixelY = y;
+                    }
+                }
+            }
+
+            // Crop the image
+            int croppedWidth = endPixelX - startPixelX;
+            int croppedHeight = endPixelY - startPixelY;
+            Rectangle croppedRectangle = new Rectangle(startPixelX, startPixelY, croppedWidth, croppedHeight);
+            using var croppedImage = combinedImage.Clone(img => img.Crop(croppedRectangle));
+
+            // Save output image
+            croppedImage.SaveAsPng(outputFilePath);
+        }
+
         public static void AdjustPixelBrightness(string sourceImagePath, string targetImagePath, float scaleAmount, int maxBrightness)
         {
             // Load source image
@@ -357,6 +505,9 @@ namespace EQWOWPregenScripts
 
                                 // Height scaling relative to width
                                 // TODO: borders
+                                //float widthScaledMod = (float)scaledWidth / (float)borderedWidth;
+                                //float tempHeightScaledAmt = widthScaledMod * (float)borderedHeight;
+                                //modAddedDisplayHeight = 1f + (((float)availableHeight - tempHeightScaledAmt) / (float)availableHeight);
                                 float widthScaledMod = (float)scaledWidth / (float)borderedWidth;
                                 float tempHeightScaledAmt = widthScaledMod * (float)borderedHeight;
                                 modAddedDisplayHeight = 1f + (((float)availableHeight - tempHeightScaledAmt) / (float)availableHeight);
