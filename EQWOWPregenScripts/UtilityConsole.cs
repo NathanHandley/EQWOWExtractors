@@ -676,8 +676,8 @@ namespace EQWOWPregenScripts
                 int zeroPixelOnX = (32 - minXTile) * sizeOfTileInPixelsAcross;
 
                 // Add the pixel border
-                int pixelsDown = (endPixelY - zeroPixelOnY) + 1;
                 int pixelsUp = (zeroPixelOnY - startPixelY) + 1;
+                int pixelsDown = (endPixelY - zeroPixelOnY) + 1;                
                 int pixelsLeft = (zeroPixelOnX - startPixelX) + 1;
                 int pixelsRight = (endPixelX - zeroPixelOnX) + 1;
                 
@@ -698,6 +698,8 @@ namespace EQWOWPregenScripts
                 outputRow.Add("ContentStartPixelY", startPixelY.ToString());
                 outputRow.Add("ContentEndPixelX", endPixelX.ToString());
                 outputRow.Add("ContentEndPixelY", endPixelY.ToString());
+                outputRow.Add("ZeroPixelOnX", zeroPixelOnX.ToString());
+                outputRow.Add("ZeroPixelOnY", zeroPixelOnY.ToString());
                 outputRow.Add("WorldCoordNorth", northMaxCoordinate.ToString());
                 outputRow.Add("WorldCoordSouth", southMaxCoordinate.ToString());
                 outputRow.Add("WorldCoordWest", westMaxCoordinate.ToString());
@@ -746,6 +748,8 @@ namespace EQWOWPregenScripts
                 int tileXMax = int.Parse(mapMetadataColumns["TileXMax"]);
                 int tileYMin = int.Parse(mapMetadataColumns["TileYMin"]);
                 int tileYMax = int.Parse(mapMetadataColumns["TileYMax"]);
+                int zeroPixelOnX = int.Parse(mapMetadataColumns["ZeroPixelOnX"]);
+                int zeroPixelOnY = int.Parse(mapMetadataColumns["ZeroPixelOnY"]);
                 float worldCoordNorth = float.Parse(mapMetadataColumns["WorldCoordNorth"]);
                 float worldCoordSouth = float.Parse(mapMetadataColumns["WorldCoordSouth"]);
                 float worldCoordWest = float.Parse(mapMetadataColumns["WorldCoordWest"]);
@@ -755,21 +759,41 @@ namespace EQWOWPregenScripts
                 string sourceMap = Path.Combine(sourceMapFolder, zoneName + ".png");
                 string targetMapName = Path.Combine(targetMapFolder, zoneName + ".png");
 
-                float scaledOutputWidth, scaledOutputHeight;
+                if (zoneName.Contains("felwithea") == true)
+                {
+                    int x = 5;
+                }
+
+
+                float modAddedDisplayWidth, modAddedDisplayHeight;
                 ImageTool.GenerateFullMap(sourceMap, targetMapName, contentStartPixelX, contentStartPixelY, contentEndPixelX, contentEndPixelY,
                     MAP_OUTPUT_TOP_BORDER_PIXEL_SIZE, MAP_OUTPUT_BOTTOM_BORDER_PIXEL_SIZE, MAP_OUTPUT_LEFT_BORDER_PIXEL_SIZE, MAP_OUTPUT_RIGHT_BORDER_PIXEL_SIZE, 
-                    1024, 768, new Color(new Rgba32(32, 32, 32)), new Color(new Rgba32(131, 131, 131)), 22, 100, out scaledOutputWidth, out scaledOutputHeight);
+                    1024, 768, new Color(new Rgba32(32, 32, 32)), new Color(new Rgba32(131, 131, 131)), 22, 100, out modAddedDisplayWidth, out modAddedDisplayHeight);
+
+                // In isolation...
+                //float newWorldCoordNorth = worldCoordNorth * (2f - modAddedDisplayHeight); = Good (143.0858)
+                //float newWorldCoordSouth = worldCoordSouth * (2f - modAddedDisplayHeight); = Bad (-74.075386, should be closer to -85)
+                //float newWorldCoordWest = worldCoordWest * (2f - modAddedDisplayWidth); = Good (97.65625)
+                //float newWorldCoordEast = worldCoordEast * (2f - modAddedDisplayWidth); = Good (-243.489578)
+                // Freeport West should be...
+                // Left = 484 ish
+                // Right = 572 ish
+
+
+                float newWorldCoordNorth = worldCoordNorth * modAddedDisplayHeight;
+                float newWorldCoordSouth = worldCoordSouth * modAddedDisplayHeight;
+                float newWorldCoordWest = worldCoordWest * modAddedDisplayWidth;
+                float newWorldCoordEast = worldCoordEast * modAddedDisplayWidth;
 
                 if (zoneName.Contains("freportw") == true)
                 {
                     int x = 5;
                 }
 
-                // Apply scale to world coordinates, and factor for the transparent border
-                worldCoordNorth = (worldCoordNorth * (2f - scaledOutputHeight)) + (worldUnitsPerPixel * (float)(MAP_OUTPUT_TOP_BORDER_PIXEL_SIZE ) * (2f - scaledOutputHeight));
-                worldCoordSouth = (worldCoordSouth * (2f - scaledOutputHeight)) + (worldUnitsPerPixel * (float)(MAP_OUTPUT_BOTTOM_BORDER_PIXEL_SIZE) * (2f - scaledOutputHeight));
-                worldCoordWest = (worldCoordWest * (2f - scaledOutputWidth)) + (worldUnitsPerPixel * (float)(MAP_OUTPUT_LEFT_BORDER_PIXEL_SIZE) * (2f - scaledOutputWidth));
-                worldCoordEast = (worldCoordEast * (2f - scaledOutputWidth)) + (worldUnitsPerPixel * (float)(MAP_OUTPUT_RIGHT_BORDER_PIXEL_SIZE) * (2f - scaledOutputWidth));
+                if (zoneName.Contains("felwithea") == true)
+                {
+                    int x = 5;
+                }
 
                 mapMetadataColumns.Add("WorldCoordNorthScaled", worldCoordNorth.ToString());
                 mapMetadataColumns.Add("WorldCoordSouthScaled", worldCoordSouth.ToString());

@@ -160,7 +160,7 @@ namespace EQWOWPregenScripts
         public static void GenerateFullMap(string inputImageFilePath, string outputImageFilePath, int minPixelX, int minPixelY, int maxPixelX,
             int maxPixelY, int topBorderPixelSize, int bottomBorderPixelSize, int leftBorderPixelSize, int rightBorderPixelSize, int fullOutputPixelWidth, int fullOutputPixelHeight,
             Color backgroundColor, Color borderColor, int transparentRightWidth, int transparentBottomHeight,
-            out float contentWidthScaledProportion, out float contentHeightScaledProportion)
+            out float modAddedDisplayWidth, out float modAddedDisplayHeight)
         {
             // Load the input image
             using (Image<Rgba32> inputImage = Image.Load<Rgba32>(inputImageFilePath))
@@ -336,28 +336,46 @@ namespace EQWOWPregenScripts
 
                             // Calculate scaling to fit within output dimensions, accounting for borders
                             int availableWidth = fullOutputPixelWidth - (leftBorderPixelSize + rightBorderPixelSize + transparentRightWidth);
-                            int availableHeight = fullOutputPixelHeight - (topBorderPixelSize + bottomBorderPixelSize + transparentBottomHeight); 
-
+                            int availableHeight = fullOutputPixelHeight - (topBorderPixelSize + bottomBorderPixelSize + transparentBottomHeight);
+                            
                             // Maintain aspect ratio
                             float aspectRatio = (float)borderedWidth / borderedHeight;
                             int scaledWidth;
                             int scaledHeight;
-
-                            if (aspectRatio > (float)availableWidth / availableHeight)
+                            
+                            // Calculate relative expansion factors
+                            float cropAspectRatio = (float)cropWidth / cropHeight;
+                            float availableAspectRatio = (float)availableWidth / availableHeight;
+                            if (cropAspectRatio > availableAspectRatio)
                             {
                                 // Image is wider relative to available space
                                 scaledWidth = availableWidth;
                                 scaledHeight = (int)(availableWidth / aspectRatio);
+
+                                // Width is the constraining factor
+                                modAddedDisplayWidth = 1f;
+
+                                // Height scaling relative to width
+                                // TODO: borders
+                                float widthScaledMod = (float)scaledWidth / (float)borderedWidth;
+                                float tempHeightScaledAmt = widthScaledMod * (float)borderedHeight;
+                                modAddedDisplayHeight = 1f + (((float)availableHeight - tempHeightScaledAmt) / (float)availableHeight);
                             }
                             else
                             {
                                 // Image is taller relative to available space
                                 scaledHeight = availableHeight;
                                 scaledWidth = (int)(availableHeight * aspectRatio);
-                            }
+                                
+                                // Height is the constraining factor
+                                modAddedDisplayHeight = 1f;
 
-                            contentWidthScaledProportion = (float)scaledWidth / (float)availableWidth;
-                            contentHeightScaledProportion = (float)scaledHeight / (float)availableHeight;
+                                // Width scaling relative to height
+                                // TODO: borders
+                                float heightScaledMod = (float)scaledHeight / (float)borderedHeight;
+                                float tempWidthScaledAmt = heightScaledMod * (float)borderedWidth;
+                                modAddedDisplayWidth = 1f + (((float)availableWidth - tempWidthScaledAmt) / (float)availableWidth);
+                            }
 
                             // Create final output image with transparent background
                             using (Image<Rgba32> outputImage = new Image<Rgba32>(fullOutputPixelWidth, fullOutputPixelHeight))
