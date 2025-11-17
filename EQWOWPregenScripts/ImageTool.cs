@@ -109,8 +109,8 @@ namespace EQWOWPregenScripts
             int tileHeight = firstImage.Height;
 
             // Create output image, including a pixel border
-            outputWidth = columns * tileWidth + 2;
-            outputHeight = rows * tileHeight + 2;
+            outputWidth = (columns * tileWidth) + 2;
+            outputHeight = (rows * tileHeight) + 2;
 
             using var combinedImage = new Image<Rgba32>(outputWidth, outputHeight);
 
@@ -227,8 +227,8 @@ namespace EQWOWPregenScripts
             }
 
             // Crop the image
-            int croppedWidth = endPixelX - startPixelX;
-            int croppedHeight = endPixelY - startPixelY;
+            int croppedWidth = (endPixelX - startPixelX) + 1;
+            int croppedHeight = (endPixelY - startPixelY) + 1;
             Rectangle croppedRectangle = new Rectangle(startPixelX, startPixelY, croppedWidth, croppedHeight);
             using var croppedImage = combinedImage.Clone(img => img.Crop(croppedRectangle));
 
