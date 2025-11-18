@@ -614,107 +614,10 @@ namespace EQWOWPregenScripts
                     outputFile.WriteLine(outputLine);
         }
 
-        public static void StitchMinimapChunksIntoOneMinimap()
-        {
-            // Grab minimap images and sort into zones
-            string sourceMinimapFolder = "E:\\ConverterData\\MinimapsTarget";
-            string targetStitchedFolder = "E:\\ConverterData\\StitchedMaps";
-            if (Directory.Exists(targetStitchedFolder) == true)
-                Directory.Delete(targetStitchedFolder, true);
-            Directory.CreateDirectory(targetStitchedFolder);
-            string[] minimapFullFilePaths = Directory.GetFiles(sourceMinimapFolder, "*.png");
-            Dictionary<string, List<MinimapMetadata>> minimapsByZoneName = new Dictionary<string, List<MinimapMetadata>>();
-            foreach (string minimapFullFilePath in minimapFullFilePaths)
-            { 
-                MinimapMetadata minimapMetadata = new MinimapMetadata();
-                minimapMetadata.FullFilePath = minimapFullFilePath;
-
-                string fileNameOnly = Path.GetFileName(minimapFullFilePath);
-                int firstUnderscoreIndex = fileNameOnly.IndexOf('_');
-                int secondUnderscoreIndex = fileNameOnly.IndexOf('_', firstUnderscoreIndex + 1);
-                minimapMetadata.ZoneName = fileNameOnly.Substring(0, secondUnderscoreIndex);
-                int thirdUnderscoreIndex = fileNameOnly.IndexOf('_', secondUnderscoreIndex + 1);
-                minimapMetadata.XTile = Convert.ToInt32(fileNameOnly.Substring(secondUnderscoreIndex + 1, thirdUnderscoreIndex - secondUnderscoreIndex - 1));
-                int periodIndex = fileNameOnly.IndexOf('.', thirdUnderscoreIndex + 1);
-                minimapMetadata.YTile = Convert.ToInt32(fileNameOnly.Substring(thirdUnderscoreIndex + 1, periodIndex - thirdUnderscoreIndex - 1));
-
-                if (minimapsByZoneName.ContainsKey(minimapMetadata.ZoneName) == false)
-                    minimapsByZoneName.Add(minimapMetadata.ZoneName, new List<MinimapMetadata>());
-                minimapsByZoneName[minimapMetadata.ZoneName].Add(minimapMetadata);
-            }
-
-            // Generate stitched maps for each zone and write the metadata for it
-            string outputMetadataFile = "E:\\ConverterData\\StitchedMaps\\mapmeta.csv";
-            List<Dictionary<string, string>> outputMetadataRows = new List<Dictionary<string, string>>();
-            foreach (var minimapSetForZone in minimapsByZoneName)
-            {
-                string outputFilename = Path.Combine(targetStitchedFolder, minimapSetForZone.Key + ".png");
-                int outputWidth, outputHeight, startPixelX, startPixelY, endPixelX, endPixelY;
-                ImageTool.CombineMinimapImages(minimapSetForZone.Value, outputFilename, out outputWidth, out outputHeight, out startPixelX, out startPixelY,
-                    out endPixelX, out endPixelY);
-
-                ///
-                /////
-                /////////////////////////////////////////////////////////////////////////
-                // Need to know what percent of crop was done above and below all zeroes
-                /////////////////////////////////////////////////////////////////////////
-                /////
-                ///
-
-                // Find minimum and maximum tile indices
-                int minXTile = minimapSetForZone.Value.Min(m => m.XTile);
-                int maxXTile = minimapSetForZone.Value.Max(m => m.XTile);
-                int minYTile = minimapSetForZone.Value.Min(m => m.YTile);
-                int maxYTile = minimapSetForZone.Value.Max(m => m.YTile);
-
-                // Calculate world coordinates from the map outputs
-                float tileLengthInUnits = 1600f / 3f; // Comes out to 533.333 repeat, doing the math here to make it be as exact as possible
-                int numOfYTiles = (maxYTile - minYTile) + 1;
-                int sizeOfTileInPixelsAcross = outputHeight / numOfYTiles; // Tiles are square, so this works for both dimensions
-                float worldUnitsPerPixel = tileLengthInUnits / (float)sizeOfTileInPixelsAcross;
-                int zeroPixelOnY = (32 - minYTile) * sizeOfTileInPixelsAcross;
-                int zeroPixelOnX = (32 - minXTile) * sizeOfTileInPixelsAcross;
-
-                // Add the pixel border
-                int pixelsUp = (zeroPixelOnY - startPixelY) + 1;
-                int pixelsDown = (endPixelY - zeroPixelOnY) + 1;                
-                int pixelsLeft = (zeroPixelOnX - startPixelX) + 1;
-                int pixelsRight = (endPixelX - zeroPixelOnX) + 1;
-                
-                float northMaxCoordinate = (float)pixelsUp * worldUnitsPerPixel;
-                float southMaxCoordinate = (float)pixelsDown * worldUnitsPerPixel * -1f;
-                float westMaxCoordinate = (float)pixelsLeft * worldUnitsPerPixel;
-                float eastMaxCoordinate = (float)pixelsRight * worldUnitsPerPixel * -1f;
-
-                Dictionary<string, string> outputRow = new Dictionary<string, string>();
-                outputRow.Add("ZoneName", minimapSetForZone.Key);
-                outputRow.Add("TileXMin", minimapSetForZone.Value.First().XTile.ToString());
-                outputRow.Add("TileXMax", minimapSetForZone.Value.Last().XTile.ToString());
-                outputRow.Add("TileYMin", minimapSetForZone.Value.First().YTile.ToString());
-                outputRow.Add("TileYMax", minimapSetForZone.Value.Last().YTile.ToString());
-                outputRow.Add("FullPixelWidth", outputWidth.ToString());
-                outputRow.Add("FullPixelHeight", outputHeight.ToString());
-                outputRow.Add("ContentStartPixelX", startPixelX.ToString());
-                outputRow.Add("ContentStartPixelY", startPixelY.ToString());
-                outputRow.Add("ContentEndPixelX", endPixelX.ToString());
-                outputRow.Add("ContentEndPixelY", endPixelY.ToString());
-                outputRow.Add("ZeroPixelOnX", zeroPixelOnX.ToString());
-                outputRow.Add("ZeroPixelOnY", zeroPixelOnY.ToString());
-                outputRow.Add("WorldCoordNorth", northMaxCoordinate.ToString());
-                outputRow.Add("WorldCoordSouth", southMaxCoordinate.ToString());
-                outputRow.Add("WorldCoordWest", westMaxCoordinate.ToString());
-                outputRow.Add("WorldCoordEast", eastMaxCoordinate.ToString());
-                outputRow.Add("WorldUnitsPerPixel", worldUnitsPerPixel.ToString());
-
-                outputMetadataRows.Add(outputRow);
-            }
-            FileTool.WriteFile(outputMetadataFile, outputMetadataRows);
-        }
-
         public static void BrightenMinimaps()
         {
             string sourceMinimapFolder = "E:\\ConverterData\\MinimapsSource";
-            string targetMinimapFolder = "E:\\ConverterData\\MinimapsTarget";
+            string targetMinimapFolder = "E:\\ConverterData\\MinimapsBrightenedForMaps";
             if (Directory.Exists(targetMinimapFolder) == true)
                 Directory.Delete(targetMinimapFolder, true);
             Directory.CreateDirectory(targetMinimapFolder);
@@ -728,97 +631,8 @@ namespace EQWOWPregenScripts
 
         public static void GenerateMaps()
         {
-            string sourceMapFolder = "E:\\ConverterData\\StitchedMaps";
-            string targetMapFolder = "E:\\ConverterData\\ProcessedMaps";
-            if (Directory.Exists(targetMapFolder) == true)
-                Directory.Delete(targetMapFolder, true);
-            Directory.CreateDirectory(targetMapFolder);
-            string sourceMapMetadataFileFullPath = "E:\\ConverterData\\StitchedMaps\\mapmeta.csv";
-            string sourceZonePropertiesInputFileFullPath = "E:\\ConverterData\\ZoneProperties.csv";
-            List<Dictionary<string, string>> mapMetadataRows = FileTool.ReadAllRowsFromFileWithHeader(sourceMapMetadataFileFullPath, "|");
-            List<Dictionary<string, string>> zonePropertiesRows = FileTool.ReadAllRowsFromFileWithHeader(sourceZonePropertiesInputFileFullPath, "|");
-            foreach (Dictionary<string, string> mapMetadataColumns in mapMetadataRows)
-            {
-                string zoneName = mapMetadataColumns["ZoneName"];
-                int fullPixelWidth = int.Parse(mapMetadataColumns["FullPixelWidth"]);
-                int fullPixelHeight = int.Parse(mapMetadataColumns["FullPixelHeight"]);
-                int contentStartPixelX = int.Parse(mapMetadataColumns["ContentStartPixelX"]);
-                int contentStartPixelY = int.Parse(mapMetadataColumns["ContentStartPixelY"]);
-                int contentEndPixelX = int.Parse(mapMetadataColumns["ContentEndPixelX"]);
-                int contentEndPixelY = int.Parse(mapMetadataColumns["ContentEndPixelY"]);
-                int tileXMin = int.Parse(mapMetadataColumns["TileXMin"]);
-                int tileXMax = int.Parse(mapMetadataColumns["TileXMax"]);
-                int tileYMin = int.Parse(mapMetadataColumns["TileYMin"]);
-                int tileYMax = int.Parse(mapMetadataColumns["TileYMax"]);
-                int zeroPixelOnX = int.Parse(mapMetadataColumns["ZeroPixelOnX"]);
-                int zeroPixelOnY = int.Parse(mapMetadataColumns["ZeroPixelOnY"]);
-                float worldCoordNorth = float.Parse(mapMetadataColumns["WorldCoordNorth"]);
-                float worldCoordSouth = float.Parse(mapMetadataColumns["WorldCoordSouth"]);
-                float worldCoordWest = float.Parse(mapMetadataColumns["WorldCoordWest"]);
-                float worldCoordEast = float.Parse(mapMetadataColumns["WorldCoordEast"]);
-                float worldUnitsPerPixel = float.Parse(mapMetadataColumns["WorldUnitsPerPixel"]);
-
-                string sourceMap = Path.Combine(sourceMapFolder, zoneName + ".png");
-                string targetMapName = Path.Combine(targetMapFolder, zoneName + ".png");
-
-                if (zoneName.Contains("felwithea") == true)
-                {
-                    int x = 5;
-                }
-
-
-                float modAddedDisplayWidth, modAddedDisplayHeight;
-                ImageTool.GenerateFullMap(sourceMap, targetMapName, contentStartPixelX, contentStartPixelY, contentEndPixelX, contentEndPixelY,
-                    MAP_OUTPUT_TOP_BORDER_PIXEL_SIZE, MAP_OUTPUT_BOTTOM_BORDER_PIXEL_SIZE, MAP_OUTPUT_LEFT_BORDER_PIXEL_SIZE, MAP_OUTPUT_RIGHT_BORDER_PIXEL_SIZE, 
-                    1024, 768, new Color(new Rgba32(32, 32, 32)), new Color(new Rgba32(131, 131, 131)), 22, 100, out modAddedDisplayWidth, out modAddedDisplayHeight);
-
-                // In isolation...
-                //float newWorldCoordNorth = worldCoordNorth * (2f - modAddedDisplayHeight); = Good (143.0858)
-                //float newWorldCoordSouth = worldCoordSouth * (2f - modAddedDisplayHeight); = Bad (-74.075386, should be closer to -85)
-                //float newWorldCoordWest = worldCoordWest * (2f - modAddedDisplayWidth); = Good (97.65625)
-                //float newWorldCoordEast = worldCoordEast * (2f - modAddedDisplayWidth); = Good (-243.489578)
-                // Freeport West should be...
-                // Left = 484 ish
-                // Right = 572 ish
-
-
-                float newWorldCoordNorth = worldCoordNorth * modAddedDisplayHeight;
-                float newWorldCoordSouth = worldCoordSouth * modAddedDisplayHeight;
-                float newWorldCoordWest = worldCoordWest * modAddedDisplayWidth;
-                float newWorldCoordEast = worldCoordEast * modAddedDisplayWidth;
-
-                foreach (Dictionary<string, string> zonePropertiesColumns in zonePropertiesRows)
-                {
-                    if (mapMetadataColumns["ZoneName"].EndsWith(zonePropertiesColumns["ShortName"]) == false)
-                        continue;
-                    zonePropertiesColumns["DisplayMapMainTop"] = newWorldCoordNorth.ToString();
-                    zonePropertiesColumns["DisplayMapMainBottom"] = newWorldCoordSouth.ToString();
-                    zonePropertiesColumns["DisplayMapMainLeft"] = newWorldCoordWest.ToString();
-                    zonePropertiesColumns["DisplayMapMainRight"] = newWorldCoordEast.ToString();
-                }
-
-                if (zoneName.Contains("freportw") == true)
-                {
-                    int x = 5;
-                }
-
-                if (zoneName.Contains("felwithea") == true)
-                {
-                    int x = 5;
-                }
-            }
-            string targetZonePropertiesFileFullPath = "E:\\ConverterData\\ZonePropertiesUpdated.csv";
-            FileTool.WriteFile(targetZonePropertiesFileFullPath, zonePropertiesRows);
-        }
-
-        public static void GenerateMapsNew()
-        {
             // Grab minimap images and sort into zones
-            string sourceMinimapFolder = "E:\\ConverterData\\MinimapsTarget";
-            string targetStitchedFolder = "E:\\ConverterData\\StitchedMapsNew";
-            if (Directory.Exists(targetStitchedFolder) == true)
-                Directory.Delete(targetStitchedFolder, true);
-            Directory.CreateDirectory(targetStitchedFolder);
+            string sourceMinimapFolder = "E:\\ConverterData\\MinimapsBrightenedForMaps";
             string[] minimapFullFilePaths = Directory.GetFiles(sourceMinimapFolder, "*.png");
             Dictionary<string, List<MinimapMetadata>> minimapsByZoneName = new Dictionary<string, List<MinimapMetadata>>();
             foreach (string minimapFullFilePath in minimapFullFilePaths)
@@ -840,22 +654,27 @@ namespace EQWOWPregenScripts
                 minimapsByZoneName[minimapMetadata.ZoneName].Add(minimapMetadata);
             }
 
-            // Generate stitched maps for each zone and save the metadata for it
+            // Generate stitched maps for each zone, then the final maps, and save the metadata for it
+            string targetStitchedFolder = "E:\\ConverterData\\StitchedMapsNew";
+            string targetCompletedMapFolder = "E:\\ConverterData\\CompleteMaps";
+            if (Directory.Exists(targetStitchedFolder) == true)
+                Directory.Delete(targetStitchedFolder, true);
+            Directory.CreateDirectory(targetStitchedFolder);
+            if (Directory.Exists(targetCompletedMapFolder) == true)
+                Directory.Delete(targetCompletedMapFolder, true);
+            Directory.CreateDirectory(targetCompletedMapFolder);
+            string sourceZonePropertiesInputFileFullPath = "E:\\ConverterData\\ZoneProperties.csv";
+            List<Dictionary<string, string>> zonePropertiesRows = FileTool.ReadAllRowsFromFileWithHeader(sourceZonePropertiesInputFileFullPath, "|");
             foreach (var minimapSetForZone in minimapsByZoneName)
             {
-                string outputFilename = Path.Combine(targetStitchedFolder, minimapSetForZone.Key + ".png");
-                int outputWidth, outputHeight, startPixelX, startPixelY, endPixelX, endPixelY;
+                string stitchedImageFileName = Path.Combine(targetStitchedFolder, minimapSetForZone.Key + ".png");
+                int outputWidth, outputHeight, startPixelXPreScale, startPixelYPreScale, endPixelXPreScale, endPixelYPreScale;
                 System.Drawing.Color borderColor = System.Drawing.Color.Yellow;
-                ImageTool.CombineMinimapImagesWithBorderAndCrop(minimapSetForZone.Value, outputFilename, new Rgba32(131, 131, 131), out outputWidth, out outputHeight, out startPixelX, out startPixelY,
-                    out endPixelX, out endPixelY);
+                ImageTool.CombineMinimapImagesWithBorderAndCrop(minimapSetForZone.Value, stitchedImageFileName, new Rgba32(131, 131, 131), out outputWidth, out outputHeight, out startPixelXPreScale, out startPixelYPreScale,
+                    out endPixelXPreScale, out endPixelYPreScale);
 
-                ///
-                /////
-                /////////////////////////////////////////////////////////////////////////
-                // Need to know what percent of crop was done above and below all zeroes
-                /////////////////////////////////////////////////////////////////////////
-                /////
-                ///
+                // Felwithea should be North = 143, South = -85, West = 97.65625, East = -243.489578
+                // Freeport should be West = 484ish, Right = 572ish
 
                 // Find minimum and maximum tile indices
                 int minXTile = minimapSetForZone.Value.Min(m => m.XTile);
@@ -871,17 +690,72 @@ namespace EQWOWPregenScripts
                 int zeroPixelOnY = (32 - minYTile) * sizeOfTileInPixelsAcross;
                 int zeroPixelOnX = (32 - minXTile) * sizeOfTileInPixelsAcross;
 
-                // Add the pixel border
-                int pixelsUp = (zeroPixelOnY - startPixelY) + 1;
-                int pixelsDown = (endPixelY - zeroPixelOnY) + 1;
-                int pixelsLeft = (zeroPixelOnX - startPixelX) + 1;
-                int pixelsRight = (endPixelX - zeroPixelOnX) + 1;
+                // Count pixels from center lines
+                int pixelsUp = (zeroPixelOnY - startPixelYPreScale);
+                int pixelsDown = (endPixelYPreScale - zeroPixelOnY);
+                int pixelsLeft = (zeroPixelOnX - startPixelXPreScale);
+                int pixelsRight = (endPixelXPreScale - zeroPixelOnX);
 
-                float northMaxCoordinate = (float)pixelsUp * worldUnitsPerPixel;
-                float southMaxCoordinate = (float)pixelsDown * worldUnitsPerPixel * -1f;
-                float westMaxCoordinate = (float)pixelsLeft * worldUnitsPerPixel;
-                float eastMaxCoordinate = (float)pixelsRight * worldUnitsPerPixel * -1f;
+                // Store unscaled world coordinates for later
+                float unscaledNorthMaxCoordinate = (float)pixelsUp * worldUnitsPerPixel;
+                float unscaledSouthMaxCoordinate = (float)pixelsDown * worldUnitsPerPixel * -1f;
+                float unscaledWestMaxCoordinate = (float)pixelsLeft * worldUnitsPerPixel;
+                float unscaledEastMaxCoordinate = (float)pixelsRight * worldUnitsPerPixel * -1f;
+
+                // Calculate how much to scale the image to fix the bounds of a map output
+                int originalWidthInPixels = pixelsLeft + pixelsRight;
+                int originalHeightInPixels = pixelsUp + pixelsDown;
+                float pixelScale = Math.Min(1002f / originalWidthInPixels, 668f / originalHeightInPixels);
+                int modWidth = (int)Math.Round(originalWidthInPixels * pixelScale);
+                int modHeight = (int)Math.Round(originalHeightInPixels * pixelScale);
+
+                // Force the larger axis to exact target
+                if (modWidth > modHeight * (1002f / 668f))
+                    modWidth = 1002;
+                else
+                    modHeight = 668;
+
+                float scaledNorthMaxCoordinate = unscaledNorthMaxCoordinate;
+                float scaledSouthMaxCoordinate = unscaledSouthMaxCoordinate;
+                float scaledWestMaxCoordinate = unscaledWestMaxCoordinate;
+                float scaledEastMaxCoordinate = unscaledEastMaxCoordinate;
+
+                // Now decide which axis to stretch in world space
+                if (modWidth == 1002)
+                {
+                    //here...
+
+
+                }
+                else
+                {
+                    // Height fills → keep world Y, stretch world X
+                    float totalRenderedWidth = 1002f;
+                    float contentPixelWidth = originalWidthInPixels * pixelScale;
+                    float worldStretchX = totalRenderedWidth / contentPixelWidth;
+
+                    scaledWestMaxCoordinate = unscaledWestMaxCoordinate * worldStretchX;
+                    scaledEastMaxCoordinate = unscaledEastMaxCoordinate * worldStretchX;
+                    scaledNorthMaxCoordinate = unscaledNorthMaxCoordinate;   // unchanged
+                    scaledSouthMaxCoordinate = unscaledSouthMaxCoordinate;   // unchanged
+                }
+
+                string targetMapFolder = Path.Combine(targetCompletedMapFolder, minimapSetForZone.Key + ".png");
+                ImageTool.GenerateFullMap(stitchedImageFileName, targetMapFolder, originalWidthInPixels, originalHeightInPixels,
+                    new Rgba32(32, 32, 32));
+
+                foreach (Dictionary<string, string> zonePropertiesColumns in zonePropertiesRows)
+                {
+                    if (minimapSetForZone.Key.EndsWith(zonePropertiesColumns["ShortName"]) == false)
+                        continue;
+                    zonePropertiesColumns["DisplayMapMainTop"] = scaledNorthMaxCoordinate.ToString();
+                    zonePropertiesColumns["DisplayMapMainBottom"] = scaledSouthMaxCoordinate.ToString();
+                    zonePropertiesColumns["DisplayMapMainLeft"] = scaledWestMaxCoordinate.ToString();
+                    zonePropertiesColumns["DisplayMapMainRight"] = scaledEastMaxCoordinate.ToString();
+                }
             }
+            string targetZonePropertiesFileFullPath = "E:\\ConverterData\\ZonePropertiesUpdated.csv";
+            FileTool.WriteFile(targetZonePropertiesFileFullPath, zonePropertiesRows);
         }
     }
 }
