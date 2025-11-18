@@ -655,7 +655,7 @@ namespace EQWOWPregenScripts
             }
 
             // Generate stitched maps for each zone, then the final maps, and save the metadata for it
-            string targetStitchedFolder = "E:\\ConverterData\\StitchedMapsNew";
+            string targetStitchedFolder = "E:\\ConverterData\\StitchedMaps";
             string targetCompletedMapFolder = "E:\\ConverterData\\CompleteMaps";
             if (Directory.Exists(targetStitchedFolder) == true)
                 Directory.Delete(targetStitchedFolder, true);
@@ -668,10 +668,10 @@ namespace EQWOWPregenScripts
             foreach (var minimapSetForZone in minimapsByZoneName)
             {
                 string stitchedImageFileName = Path.Combine(targetStitchedFolder, minimapSetForZone.Key + ".png");
-                int outputWidth, outputHeight, startPixelXPreScale, startPixelYPreScale, endPixelXPreScale, endPixelYPreScale;
+                int startPixelXPreScale, startPixelYPreScale, endPixelXPreScale, endPixelYPreScale, sizeOfTileInPixelsAcross;
                 System.Drawing.Color borderColor = System.Drawing.Color.Yellow;
-                ImageTool.CombineMinimapImagesWithBorderAndCrop(minimapSetForZone.Value, stitchedImageFileName, new Rgba32(131, 131, 131), out outputWidth, out outputHeight, out startPixelXPreScale, out startPixelYPreScale,
-                    out endPixelXPreScale, out endPixelYPreScale);
+                ImageTool.CombineMinimapImagesWithBorderAndCrop(minimapSetForZone.Value, stitchedImageFileName, new Rgba32(131, 131, 131), out startPixelXPreScale, 
+                    out startPixelYPreScale, out endPixelXPreScale, out endPixelYPreScale, out sizeOfTileInPixelsAcross);
 
                 // Felwithea should be North = 143, South = -85, West = 97.65625, East = -243.489578
                 // Freeport should be West = 484ish, Right = 572ish
@@ -684,74 +684,61 @@ namespace EQWOWPregenScripts
 
                 // Calculate world coordinates from the map outputs
                 float tileLengthInUnits = 1600f / 3f; // Comes out to 533.333 repeat, doing the math here to make it be as exact as possible
-                int numOfYTiles = (maxYTile - minYTile) + 1;
-                int sizeOfTileInPixelsAcross = outputHeight / numOfYTiles; // Tiles are square, so this works for both dimensions
                 float worldUnitsPerPixel = tileLengthInUnits / (float)sizeOfTileInPixelsAcross;
-                int zeroPixelOnY = (32 - minYTile) * sizeOfTileInPixelsAcross;
-                int zeroPixelOnX = (32 - minXTile) * sizeOfTileInPixelsAcross;
+                int zeroPixelOnYNoCrop = ((32 - minYTile) * sizeOfTileInPixelsAcross);
+                int zeroPixelOnXNoCrop = ((32 - minXTile) * sizeOfTileInPixelsAcross);
+ 
+                // Count pixels from center lines & determine dimensions before scaling
+                int pixelsUpPreScale = (zeroPixelOnYNoCrop - startPixelYPreScale);
+                int pixelsDownPreScale = (endPixelYPreScale - zeroPixelOnYNoCrop);
+                int pixelsLeftPreScale = (zeroPixelOnXNoCrop - startPixelXPreScale);
+                int pixelsRightPreScale = (endPixelXPreScale - zeroPixelOnXNoCrop);
+                int widthPreScale = (endPixelXPreScale - startPixelXPreScale) + 1;
+                int heightPreScale = (endPixelYPreScale - startPixelYPreScale) + 1;
+                int centerXPreScale = pixelsLeftPreScale;
+                int centerYPreScale = pixelsUpPreScale;
 
-                // Count pixels from center lines
-                int pixelsUp = (zeroPixelOnY - startPixelYPreScale);
-                int pixelsDown = (endPixelYPreScale - zeroPixelOnY);
-                int pixelsLeft = (zeroPixelOnX - startPixelXPreScale);
-                int pixelsRight = (endPixelXPreScale - zeroPixelOnX);
-
-                // Store unscaled world coordinates for later
-                float unscaledNorthMaxCoordinate = (float)pixelsUp * worldUnitsPerPixel;
-                float unscaledSouthMaxCoordinate = (float)pixelsDown * worldUnitsPerPixel * -1f;
-                float unscaledWestMaxCoordinate = (float)pixelsLeft * worldUnitsPerPixel;
-                float unscaledEastMaxCoordinate = (float)pixelsRight * worldUnitsPerPixel * -1f;
-
-                // Calculate how much to scale the image to fix the bounds of a map output
-                int originalWidthInPixels = pixelsLeft + pixelsRight;
-                int originalHeightInPixels = pixelsUp + pixelsDown;
-                float pixelScale = Math.Min(1002f / originalWidthInPixels, 668f / originalHeightInPixels);
-                int modWidth = (int)Math.Round(originalWidthInPixels * pixelScale);
-                int modHeight = (int)Math.Round(originalHeightInPixels * pixelScale);
-
-                // Force the larger axis to exact target
-                if (modWidth > modHeight * (1002f / 668f))
-                    modWidth = 1002;
+                // Determine the scaling and offsets
+                const int contentTargetWidth = 1002;
+                const int contentTargetHeight = 668;
+                float scaleByWidth = contentTargetWidth / (float)widthPreScale;
+                float scaleByHeight = contentTargetHeight / (float)heightPreScale;
+                float pixelScale = Math.Min(scaleByWidth, scaleByHeight);
+                int scaledContentWidth = (int)Math.Round(widthPreScale * pixelScale);
+                int scaledContentHeight = (int)Math.Round(heightPreScale * pixelScale);
+                if (scaledContentWidth * contentTargetHeight > scaledContentHeight * contentTargetWidth)
+                    scaledContentWidth = contentTargetWidth;
                 else
-                    modHeight = 668;
+                    scaledContentHeight = contentTargetHeight;
+                int outputOffsetX = (contentTargetWidth - scaledContentWidth) / 2;
+                int outputOffsetY = (contentTargetHeight - scaledContentHeight) / 2;
 
-                float scaledNorthMaxCoordinate = unscaledNorthMaxCoordinate;
-                float scaledSouthMaxCoordinate = unscaledSouthMaxCoordinate;
-                float scaledWestMaxCoordinate = unscaledWestMaxCoordinate;
-                float scaledEastMaxCoordinate = unscaledEastMaxCoordinate;
-
-                // Now decide which axis to stretch in world space
-                if (modWidth == 1002)
-                {
-                    //here...
-
-
-                }
-                else
-                {
-                    // Height fills → keep world Y, stretch world X
-                    float totalRenderedWidth = 1002f;
-                    float contentPixelWidth = originalWidthInPixels * pixelScale;
-                    float worldStretchX = totalRenderedWidth / contentPixelWidth;
-
-                    scaledWestMaxCoordinate = unscaledWestMaxCoordinate * worldStretchX;
-                    scaledEastMaxCoordinate = unscaledEastMaxCoordinate * worldStretchX;
-                    scaledNorthMaxCoordinate = unscaledNorthMaxCoordinate;   // unchanged
-                    scaledSouthMaxCoordinate = unscaledSouthMaxCoordinate;   // unchanged
-                }
-
+                // Draw the image
                 string targetMapFolder = Path.Combine(targetCompletedMapFolder, minimapSetForZone.Key + ".png");
-                ImageTool.GenerateFullMap(stitchedImageFileName, targetMapFolder, originalWidthInPixels, originalHeightInPixels,
-                    new Rgba32(32, 32, 32));
+                ImageTool.GenerateFullMap(stitchedImageFileName, targetMapFolder, scaledContentWidth, scaledContentHeight,
+                    new Rgba32(32, 32, 32), contentTargetWidth, contentTargetHeight, pixelScale, outputOffsetX, outputOffsetY);
+
+                // Calculate world positions
+                float worldUnitsPerScaledPixel = worldUnitsPerPixel / pixelScale;
+                float newCenterX = (float)outputOffsetX + (float)centerXPreScale * pixelScale;
+                float newCenterY = (float)outputOffsetY + (float)centerYPreScale * pixelScale;
+                float outputPixelsFromCenterWest = newCenterX;
+                float outputPixelsFromCenterEast = (float)contentTargetWidth - newCenterX;
+                float outputPixelsFromCenterNorth = newCenterY;
+                float outputPixelsFromCenterSouth = (float)contentTargetHeight - newCenterY;
+                float worldPositionWest = outputPixelsFromCenterWest * worldUnitsPerScaledPixel;
+                float worldPositionEast = -1 * outputPixelsFromCenterEast * worldUnitsPerScaledPixel;
+                float worldPositionNorth = outputPixelsFromCenterNorth * worldUnitsPerScaledPixel;
+                float worldPositionSouth = -1 * outputPixelsFromCenterSouth * worldUnitsPerScaledPixel;
 
                 foreach (Dictionary<string, string> zonePropertiesColumns in zonePropertiesRows)
                 {
                     if (minimapSetForZone.Key.EndsWith(zonePropertiesColumns["ShortName"]) == false)
                         continue;
-                    zonePropertiesColumns["DisplayMapMainTop"] = scaledNorthMaxCoordinate.ToString();
-                    zonePropertiesColumns["DisplayMapMainBottom"] = scaledSouthMaxCoordinate.ToString();
-                    zonePropertiesColumns["DisplayMapMainLeft"] = scaledWestMaxCoordinate.ToString();
-                    zonePropertiesColumns["DisplayMapMainRight"] = scaledEastMaxCoordinate.ToString();
+                    zonePropertiesColumns["DisplayMapMainTop"] = worldPositionNorth.ToString();
+                    zonePropertiesColumns["DisplayMapMainBottom"] = worldPositionSouth.ToString();
+                    zonePropertiesColumns["DisplayMapMainLeft"] = worldPositionWest.ToString();
+                    zonePropertiesColumns["DisplayMapMainRight"] = worldPositionEast.ToString();
                 }
             }
             string targetZonePropertiesFileFullPath = "E:\\ConverterData\\ZonePropertiesUpdated.csv";

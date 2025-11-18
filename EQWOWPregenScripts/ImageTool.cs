@@ -92,8 +92,8 @@ namespace EQWOWPregenScripts
             targetImage.SaveAsPng(targetImagePath);
         }
 
-        public static void CombineMinimapImagesWithBorderAndCrop(List<MinimapMetadata> minimaps, string outputFilePath, Rgba32 borderColorValue, out int outputWidth,
-            out int outputHeight, out int startPixelX, out int startPixelY, out int endPixelX, out int endPixelY)
+        public static void CombineMinimapImagesWithBorderAndCrop(List<MinimapMetadata> minimaps, string outputFilePath, Rgba32 borderColorValue, 
+            out int startPixelX, out int startPixelY, out int endPixelX, out int endPixelY, out int sizeOfTileInPixelsAcross)
         {
             Color borderColor = new Color(borderColorValue);
 
@@ -111,12 +111,13 @@ namespace EQWOWPregenScripts
             using var firstImage = Image.Load<Rgba32>(minimaps[0].FullFilePath);
             int tileWidth = firstImage.Width;
             int tileHeight = firstImage.Height;
+            sizeOfTileInPixelsAcross = tileWidth; // Tiles are all square, so doesn't matter which to use
 
             // Create output image, including a pixel border
-            outputWidth = (columns * tileWidth) + 2;
-            outputHeight = (rows * tileHeight) + 2;
+            int combinedWidthPreCrop = (columns * tileWidth) + 2;
+            int combinedHeightPreCrop = (rows * tileHeight) + 2;
 
-            using var combinedImage = new Image<Rgba32>(outputWidth, outputHeight);
+            using var combinedImage = new Image<Rgba32>(combinedWidthPreCrop, combinedHeightPreCrop);
 
             // Process each minimap by copying it into the larger image
             foreach (var minimap in minimaps)
@@ -240,30 +241,11 @@ namespace EQWOWPregenScripts
             croppedImage.SaveAsPng(outputFilePath);
         }
 
-        public static void GenerateFullMap(string sourceImageFullPath, string targetImageFullPath, int originalWidth, int originalHeight,
-            Rgba32 backgroundColor)
+        public static void GenerateFullMap(string sourceImageFullPath, string targetImageFullPath, int scaledContentWidth, int scaledContentHeight,
+            Rgba32 backgroundColor, int contentTargetWidth, int contentTargetHeight, float pixelScale, int offsetX, int offsetY)
         {
-            const int contentTargetWidth = 1002;
-            const int contentTargetHeight = 668;
             const int transparentPadRight = 22;
-            const int transparentPadBottom = 100;
-
-            // Determine pixel scale (fit with letterbox)
-            float scaleByWidth = contentTargetWidth / (float)originalWidth;
-            float scaleByHeight = contentTargetHeight / (float)originalHeight;
-            float pixelScale = Math.Min(scaleByWidth, scaleByHeight);
-
-            int contentWidth = (int)Math.Round(originalWidth * pixelScale);
-            int contentHeight = (int)Math.Round(originalHeight * pixelScale);
-
-            // Force the dominant axis to exact target
-            if (contentWidth * contentTargetHeight > contentHeight * contentTargetWidth)
-                contentWidth = contentTargetWidth;
-            else
-                contentHeight = contentTargetHeight;
-
-            int offsetX = (contentTargetWidth - contentWidth) / 2;
-            int offsetY = (contentTargetHeight - contentHeight) / 2;
+            const int transparentPadBottom = 100;            
 
             // Load the cropped image
             using var croppedSourceImage = Image.Load<Rgba32>(sourceImageFullPath);
@@ -296,7 +278,7 @@ namespace EQWOWPregenScripts
             // Resize the image
             var resizeOptions = new ResizeOptions
             {
-                Size = new Size(contentWidth, contentHeight),
+                Size = new Size(scaledContentWidth, scaledContentHeight),
                 Mode = ResizeMode.Stretch,
                 Sampler = KnownResamplers.Lanczos3
             };
