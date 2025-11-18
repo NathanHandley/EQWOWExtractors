@@ -24,10 +24,10 @@ namespace EQWOWPregenScripts
     internal class UtilityConsole
     {
         private static string ConnectionString = "Server=127.0.0.1;Database=acore_world;Uid=scriptread;Pwd=scriptreadpass;";
-        private static readonly int MAP_OUTPUT_LEFT_BORDER_PIXEL_SIZE = 0; //30;
-        private static readonly int MAP_OUTPUT_RIGHT_BORDER_PIXEL_SIZE = 0; //30;
-        private static readonly int MAP_OUTPUT_TOP_BORDER_PIXEL_SIZE = 0; //30;
-        private static readonly int MAP_OUTPUT_BOTTOM_BORDER_PIXEL_SIZE = 0; //30;
+        private static readonly int MAP_OUTPUT_LEFT_BORDER_PIXEL_SIZE = 30;
+        private static readonly int MAP_OUTPUT_RIGHT_BORDER_PIXEL_SIZE = 30;
+        private static readonly int MAP_OUTPUT_TOP_BORDER_PIXEL_SIZE = 30;
+        private static readonly int MAP_OUTPUT_BOTTOM_BORDER_PIXEL_SIZE = 30;
 
         public static void ConvertTradeskillsToFlattenedList()
         {
@@ -699,8 +699,8 @@ namespace EQWOWPregenScripts
                 int centerYPreScale = pixelsUpPreScale;
 
                 // Determine the scaling and offsets
-                const int contentTargetWidth = 1002;
-                const int contentTargetHeight = 668;
+                int contentTargetWidth = 1002 - (MAP_OUTPUT_LEFT_BORDER_PIXEL_SIZE + MAP_OUTPUT_RIGHT_BORDER_PIXEL_SIZE);
+                int contentTargetHeight = 668 - (MAP_OUTPUT_TOP_BORDER_PIXEL_SIZE + MAP_OUTPUT_BOTTOM_BORDER_PIXEL_SIZE);
                 float scaleByWidth = contentTargetWidth / (float)widthPreScale;
                 float scaleByHeight = contentTargetHeight / (float)heightPreScale;
                 float pixelScale = Math.Min(scaleByWidth, scaleByHeight);
@@ -710,8 +710,8 @@ namespace EQWOWPregenScripts
                     scaledContentWidth = contentTargetWidth;
                 else
                     scaledContentHeight = contentTargetHeight;
-                int outputOffsetX = (contentTargetWidth - scaledContentWidth) / 2;
-                int outputOffsetY = (contentTargetHeight - scaledContentHeight) / 2;
+                int outputOffsetX = ((contentTargetWidth - scaledContentWidth) / 2) + MAP_OUTPUT_LEFT_BORDER_PIXEL_SIZE;
+                int outputOffsetY = ((contentTargetHeight - scaledContentHeight) / 2) + MAP_OUTPUT_TOP_BORDER_PIXEL_SIZE;
 
                 // Draw the image
                 string targetMapFolder = Path.Combine(targetCompletedMapFolder, minimapSetForZone.Key + ".png");
@@ -723,9 +723,9 @@ namespace EQWOWPregenScripts
                 float newCenterX = (float)outputOffsetX + (float)centerXPreScale * pixelScale;
                 float newCenterY = (float)outputOffsetY + (float)centerYPreScale * pixelScale;
                 float outputPixelsFromCenterWest = newCenterX;
-                float outputPixelsFromCenterEast = (float)contentTargetWidth - newCenterX;
+                float outputPixelsFromCenterEast = (float)((contentTargetWidth) - newCenterX) + (float)(MAP_OUTPUT_RIGHT_BORDER_PIXEL_SIZE * 2);
                 float outputPixelsFromCenterNorth = newCenterY;
-                float outputPixelsFromCenterSouth = (float)contentTargetHeight - newCenterY;
+                float outputPixelsFromCenterSouth = (float)((contentTargetHeight) - newCenterY) + (float)(MAP_OUTPUT_BOTTOM_BORDER_PIXEL_SIZE * 2);
                 float worldPositionWest = outputPixelsFromCenterWest * worldUnitsPerScaledPixel;
                 float worldPositionEast = -1 * outputPixelsFromCenterEast * worldUnitsPerScaledPixel;
                 float worldPositionNorth = outputPixelsFromCenterNorth * worldUnitsPerScaledPixel;

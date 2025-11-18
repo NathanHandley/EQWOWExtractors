@@ -244,9 +244,6 @@ namespace EQWOWPregenScripts
         public static void GenerateFullMap(string sourceImageFullPath, string targetImageFullPath, int scaledContentWidth, int scaledContentHeight,
             Rgba32 backgroundColor, int contentTargetWidth, int contentTargetHeight, float pixelScale, int offsetX, int offsetY)
         {
-            const int transparentPadRight = 22;
-            const int transparentPadBottom = 100;            
-
             // Load the cropped image
             using var croppedSourceImage = Image.Load<Rgba32>(sourceImageFullPath);
 
@@ -285,8 +282,8 @@ namespace EQWOWPregenScripts
             using var resized = croppedSourceImage.Clone(ctx => ctx.Resize(resizeOptions));
 
             // In creating the final image, add on the clear padding on the right and bottom
-            int finalOutputWidth = contentTargetWidth + transparentPadRight;
-            int finalOutputHeight = contentTargetHeight + transparentPadBottom;
+            int finalOutputWidth = 1024; // 22 transparent pixels pad the right
+            int finalOutputHeight = 768; // 100 transparent pixels pad the bottom
             using var finalImage = new Image<Rgba32>(finalOutputWidth, finalOutputHeight, Color.Transparent);
             finalImage.Mutate(ctx => ctx.Fill(backgroundColor, new Rectangle(0, 0, 1002, 668)));
             finalImage.Mutate(ctx => ctx.DrawImage(resized, new Point(offsetX, offsetY), 1f));
