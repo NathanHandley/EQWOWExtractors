@@ -24,10 +24,10 @@ namespace EQWOWPregenScripts
     internal class UtilityConsole
     {
         private static string ConnectionString = "Server=127.0.0.1;Database=acore_world;Uid=scriptread;Pwd=scriptreadpass;";
-        private static readonly int MAP_OUTPUT_LEFT_BORDER_PIXEL_SIZE = 30;
-        private static readonly int MAP_OUTPUT_RIGHT_BORDER_PIXEL_SIZE = 30;
-        private static readonly int MAP_OUTPUT_TOP_BORDER_PIXEL_SIZE = 30;
-        private static readonly int MAP_OUTPUT_BOTTOM_BORDER_PIXEL_SIZE = 30;
+        private static readonly int MAP_OUTPUT_LEFT_BORDER_PIXEL_SIZE = 2;
+        private static readonly int MAP_OUTPUT_RIGHT_BORDER_PIXEL_SIZE = 2;
+        private static readonly int MAP_OUTPUT_TOP_BORDER_PIXEL_SIZE = 2;
+        private static readonly int MAP_OUTPUT_BOTTOM_BORDER_PIXEL_SIZE = 2;
 
         public static void ConvertTradeskillsToFlattenedList()
         {
@@ -672,9 +672,6 @@ namespace EQWOWPregenScripts
                 System.Drawing.Color borderColor = System.Drawing.Color.Yellow;
                 ImageTool.CombineMinimapImagesWithBorderAndCrop(minimapSetForZone.Value, stitchedImageFileName, new Rgba32(131, 131, 131), out startPixelXPreScale, 
                     out startPixelYPreScale, out endPixelXPreScale, out endPixelYPreScale, out sizeOfTileInPixelsAcross);
-
-                // Felwithea should be North = 143, South = -85, West = 97.65625, East = -243.489578
-                // Freeport should be West = 484ish, Right = 572ish
 
                 // Find minimum and maximum tile indices
                 int minXTile = minimapSetForZone.Value.Min(m => m.XTile);
