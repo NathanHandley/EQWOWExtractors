@@ -136,25 +136,32 @@ namespace EQWOWPregenScripts
                 combinedImage.Mutate(ctx => ctx.DrawImage(tileImage, new Point(destX, destY), 1f));
             }
 
+            combinedImage.SaveAsPng(outputFilePath);
+
+            // Add breakpoint here to intercept the file
+            int temp = 5;
+
+            using var reloadedCombinedImage = Image.Load<Rgba32>(outputFilePath);
+
             // Go around the image and add a border
-            combinedImage.ProcessPixelRows(accessor =>
+            reloadedCombinedImage.ProcessPixelRows(accessor =>
             {
                 // Create a copy of the pixel data to avoid modifying while reading
-                Rgba32[,] pixelCopy = new Rgba32[combinedImage.Height, combinedImage.Width];
-                for (int y = 0; y < combinedImage.Height; y++)
+                Rgba32[,] pixelCopy = new Rgba32[reloadedCombinedImage.Height, reloadedCombinedImage.Width];
+                for (int y = 0; y < reloadedCombinedImage.Height; y++)
                 {
                     Span<Rgba32> row = accessor.GetRowSpan(y);
-                    for (int x = 0; x < combinedImage.Width; x++)
+                    for (int x = 0; x < reloadedCombinedImage.Width; x++)
                     {
                         pixelCopy[y, x] = row[x];
                     }
                 }
 
                 // Process each pixel
-                for (int y = 0; y < combinedImage.Height; y++)
+                for (int y = 0; y < reloadedCombinedImage.Height; y++)
                 {
                     Span<Rgba32> row = accessor.GetRowSpan(y);
-                    for (int x = 0; x < combinedImage.Width; x++)
+                    for (int x = 0; x < reloadedCombinedImage.Width; x++)
                     {
                         // Check if the pixel is pure black
                         if (pixelCopy[y, x].R == 0 && pixelCopy[y, x].G == 0 && pixelCopy[y, x].B == 0)
@@ -172,7 +179,7 @@ namespace EQWOWPregenScripts
                             }
 
                             // Check bottom neighbor
-                            if (y < combinedImage.Height - 1)
+                            if (y < reloadedCombinedImage.Height - 1)
                             {
                                 Rgba32 bottom = pixelCopy[y + 1, x];
                                 if (bottom.R > 0 || bottom.G > 0 || bottom.B > 0)
@@ -192,7 +199,7 @@ namespace EQWOWPregenScripts
                             }
 
                             // Check right neighbor
-                            if (x < combinedImage.Width - 1)
+                            if (x < reloadedCombinedImage.Width - 1)
                             {
                                 Rgba32 right = pixelCopy[y, x + 1];
                                 if (right.R > 0 || right.G > 0 || right.B > 0)
@@ -211,16 +218,16 @@ namespace EQWOWPregenScripts
             });
 
             // Calculate bounding rectangle of non-pure-black pixels
-            startPixelX = combinedImage.Width;
+            startPixelX = reloadedCombinedImage.Width;
             endPixelX = -1;
-            startPixelY = combinedImage.Height;
+            startPixelY = reloadedCombinedImage.Height;
             endPixelY = -1;
 
-            for (int y = 0; y < combinedImage.Height; y++)
+            for (int y = 0; y < reloadedCombinedImage.Height; y++)
             {
-                for (int x = 0; x < combinedImage.Width; x++)
+                for (int x = 0; x < reloadedCombinedImage.Width; x++)
                 {
-                    Rgba32 pixel = combinedImage[x, y];
+                    Rgba32 pixel = reloadedCombinedImage[x, y];
                     if (pixel.R != 0 || pixel.G != 0 || pixel.B != 0)
                     {
                         if (x < startPixelX) startPixelX = x;
@@ -235,7 +242,7 @@ namespace EQWOWPregenScripts
             int croppedWidth = (endPixelX - startPixelX) + 1;
             int croppedHeight = (endPixelY - startPixelY) + 1;
             Rectangle croppedRectangle = new Rectangle(startPixelX, startPixelY, croppedWidth, croppedHeight);
-            using var croppedImage = combinedImage.Clone(img => img.Crop(croppedRectangle));
+            using var croppedImage = reloadedCombinedImage.Clone(img => img.Crop(croppedRectangle));
 
             // Save output image
             croppedImage.SaveAsPng(outputFilePath);

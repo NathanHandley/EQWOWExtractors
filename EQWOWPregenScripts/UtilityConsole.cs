@@ -730,7 +730,7 @@ namespace EQWOWPregenScripts
 
                 foreach (Dictionary<string, string> zonePropertiesColumns in zonePropertiesRows)
                 {
-                    if (minimapSetForZone.Key.EndsWith(zonePropertiesColumns["ShortName"]) == false)
+                    if (minimapSetForZone.Key.Substring(3) != zonePropertiesColumns["ShortName"])
                         continue;
                     zonePropertiesColumns["DisplayMapMainTop"] = worldPositionNorth.ToString();
                     zonePropertiesColumns["DisplayMapMainBottom"] = worldPositionSouth.ToString();
