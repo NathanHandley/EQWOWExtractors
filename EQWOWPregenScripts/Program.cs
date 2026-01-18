@@ -667,12 +667,13 @@ using System.Text;
 while (true)
 {
     Console.WriteLine("[1] Flatten Tradeskill Data");
-    Console.WriteLine("[2] Update Spawn Locations");
-    Console.WriteLine("[3] Write tradeskill IDs for produced items in item templates");
-    Console.WriteLine("[4] Extract Spells EFF");
-    Console.WriteLine("[5] Generate and add spell IDs for worn spells");
-    Console.WriteLine("[6] Brighten minimaps");
-    Console.WriteLine("[7] Generate maps");
+    Console.WriteLine("[2] Update Spawn Locations (Manually Added)");
+    Console.WriteLine("[3] Update Spawn Locations (From Fall)");
+    Console.WriteLine("[4] Write tradeskill IDs for produced items in item templates");
+    Console.WriteLine("[5] Extract Spells EFF");
+    Console.WriteLine("[6] Generate and add spell IDs for worn spells");
+    Console.WriteLine("[7] Brighten minimaps");
+    Console.WriteLine("[8] Generate maps");
     Console.WriteLine(" ");
     Console.Write("Command: ");
     string? enteredCommand = Console.ReadLine();
@@ -681,12 +682,13 @@ while (true)
         switch (enteredCommand)
         {
             case "1": UtilityConsole.ConvertTradeskillsToFlattenedList(); break;
-            case "2": UtilityConsole.UpdateSpawnLocations(); break;
-            case "3": UtilityConsole.UpdateTradeskillReferencesInItemTemplates(); break;
-            case "4": UtilityConsole.ExtractSpellsEFF(); break;
-            case "5": UtilityConsole.GenerateAndAddSpellIDsForWornSpells(); break;
-            case "6": UtilityConsole.BrightenMinimaps(); break;
-            case "7": UtilityConsole.GenerateMaps(); break;
+            case "2": UtilityConsole.UpdateSpawnLocationsManualAdd(); break;
+            case "3": UtilityConsole.UpdateSpawnLocationsFromFall(); break;
+            case "4": UtilityConsole.UpdateTradeskillReferencesInItemTemplates(); break;
+            case "5": UtilityConsole.ExtractSpellsEFF(); break;
+            case "6": UtilityConsole.GenerateAndAddSpellIDsForWornSpells(); break;
+            case "7": UtilityConsole.BrightenMinimaps(); break;
+            case "8": UtilityConsole.GenerateMaps(); break;
             default: Console.WriteLine("Unknown command entered"); break;
         }
     }

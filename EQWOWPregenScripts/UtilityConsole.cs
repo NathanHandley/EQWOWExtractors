@@ -16,7 +16,6 @@
 
 using System.Text;
 using MySql.Data.MySqlClient;
-using SixLabors.ImageSharp;
 using SixLabors.ImageSharp.PixelFormats;
 
 namespace EQWOWPregenScripts
@@ -347,7 +346,115 @@ namespace EQWOWPregenScripts
                     outputFile.WriteLine(outputLine);
         }
 
-        public static void UpdateSpawnLocations()
+        // Note: I had Grok help write most of this method, at least until the update part
+        public static void UpdateSpawnLocationsFromFall()
+        {
+            string folderPath = "E:\\ConverterData\\MapsFromFall";
+
+            // Local containers - nested dictionaries for the required multi-level keys
+            var spawnInstances = new Dictionary<string, Dictionary<int, float>>();
+            // zone → Eqid → ZPosition
+
+            var pathGridEntries = new Dictionary<string, Dictionary<int, Dictionary<int, float>>>();
+            // zone → GridID → Number → ZPosition
+
+            // Get all .txt files in the folder
+            string[] txtFiles;
+            try
+            {
+                txtFiles = Directory.GetFiles(folderPath, "*.txt", SearchOption.TopDirectoryOnly);
+            }
+            catch (Exception)
+            {
+                // Handle invalid folder or access issues - for now, just return
+                return;
+            }
+
+            foreach (string filePath in txtFiles)
+            {
+                string[] lines;
+                try
+                {
+                    lines = File.ReadAllLines(filePath);
+                }
+                catch (Exception)
+                {
+                    // Skip invalid files
+                    continue;
+                }
+
+                foreach (string input in lines)
+                {
+                    if (string.IsNullOrWhiteSpace(input))
+                        continue;
+
+                    // Split by comma and trim any extra whitespace
+                    string[] fields = input.Split(',', StringSplitOptions.TrimEntries | StringSplitOptions.RemoveEmptyEntries);
+
+                    // We need at least 6 fields (0-based index 5 is Z)
+                    if (fields.Length < 6)
+                        continue;
+
+                    string zone = fields[3];
+                    string zPosStr = fields[5];
+
+                    // Try to parse the Z position
+                    if (!float.TryParse(zPosStr, out float zPosition))
+                        continue; // Invalid Z value - skip
+
+                    // Case 1: Starts with non-zero → SpawnInstance (Eqid based)
+                    if (fields[0] != "0")
+                    {
+                        if (!int.TryParse(fields[0], out int eqid))
+                            continue; // Invalid Eqid
+
+                        // Ensure zone dictionary exists
+                        if (!spawnInstances.TryGetValue(zone, out var eqidDict))
+                        {
+                            eqidDict = new Dictionary<int, float>();
+                            spawnInstances[zone] = eqidDict;
+                        }
+
+                        // Store / overwrite
+                        eqidDict[eqid] = zPosition;
+                    }
+                    // Case 2: Starts with "0" → PathGridEntry
+                    else
+                    {
+                        if (!int.TryParse(fields[1], out int gridId) ||
+                            !int.TryParse(fields[2], out int number))
+                            continue; // Invalid GridID or Number
+
+                        // Ensure zone dictionary exists
+                        if (!pathGridEntries.TryGetValue(zone, out var gridDict))
+                        {
+                            gridDict = new Dictionary<int, Dictionary<int, float>>();
+                            pathGridEntries[zone] = gridDict;
+                        }
+
+                        // Ensure GridID dictionary exists
+                        if (!gridDict.TryGetValue(gridId, out var numberDict))
+                        {
+                            numberDict = new Dictionary<int, float>();
+                            gridDict[gridId] = numberDict;
+                        }
+
+                        // Store / overwrite
+                        numberDict[number] = zPosition;
+                    }
+                }
+            }
+
+
+            // TODO: Update spawn locations
+            aoeuaoeu
+
+
+
+
+        }
+
+        public static void UpdateSpawnLocationsManualAdd()
         {
             // Get a map of the instance IDs
             Dictionary<string, string> instanceIDsByCreatureGUID = new Dictionary<string, string>();
@@ -414,8 +521,6 @@ namespace EQWOWPregenScripts
                 }
             }
             File.Delete(inputSpawnInstancesFile);
-
-            //string outputSpawnInstancesFile = "E:\\ConverterData\\SpawnInstancesUpdated.csv";
             FileTool.WriteFile(inputSpawnInstancesFile, spawnInstanceRows);
         }
 
