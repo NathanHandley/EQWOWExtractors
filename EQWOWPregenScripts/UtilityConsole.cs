@@ -445,13 +445,40 @@ namespace EQWOWPregenScripts
                 }
             }
 
+            // Update spawn instances
+            string inputSpawnInstancesFile = "E:\\Development\\EQWOW\\Assets\\WorldData\\SpawnInstances.csv";
+            List<Dictionary<string, string>> spawnInstanceRows = FileTool.ReadAllRowsFromFileWithHeader(inputSpawnInstancesFile, "|");
+            foreach (Dictionary<string, string> spawnInstanceColumns in spawnInstanceRows)
+            {
+                string curZone = spawnInstanceColumns["zone"];
+                if (spawnInstances.ContainsKey(curZone) == false)
+                    continue;
+                int curEQID = int.Parse(spawnInstanceColumns["eqid"]);
+                if (spawnInstances[curZone].ContainsKey(curEQID) == false)
+                    continue;
+                spawnInstanceColumns["z"] = spawnInstances[curZone][curEQID].ToString();
+            }
+            File.Delete(inputSpawnInstancesFile);
+            FileTool.WriteFile(inputSpawnInstancesFile, spawnInstanceRows);
 
-            // TODO: Update spawn locations
-            aoeuaoeu
-
-
-
-
+            // Update path grid entries
+            string inputPathGridEntriesFile = "E:\\Development\\EQWOW\\Assets\\WorldData\\PathGridEntries.csv";
+            List<Dictionary<string, string>> pathGridEntryRows = FileTool.ReadAllRowsFromFileWithHeader(inputPathGridEntriesFile, "|");
+            foreach (Dictionary<string, string> pathGridEntryColumns in pathGridEntryRows)
+            {
+                string curZone = pathGridEntryColumns["short_name"];
+                if (pathGridEntries.ContainsKey(curZone) == false)
+                    continue;
+                int gridID = int.Parse(pathGridEntryColumns["_gridid"]);
+                if (pathGridEntries[curZone].ContainsKey(gridID) == false)
+                    continue;
+                int number = int.Parse(pathGridEntryColumns["number"]);
+                if (pathGridEntries[curZone][gridID].ContainsKey(number) == false)
+                    continue;
+                pathGridEntryColumns["z"] = pathGridEntries[curZone][gridID][number].ToString();
+            }
+            File.Delete(inputPathGridEntriesFile);
+            FileTool.WriteFile(inputPathGridEntriesFile, pathGridEntryRows);
         }
 
         public static void UpdateSpawnLocationsManualAdd()
